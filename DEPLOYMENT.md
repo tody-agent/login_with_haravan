@@ -131,3 +131,12 @@ login_with_haravan/
 ```
 
 If Frappe Cloud still says `Not a valid Frappe App`, click the refresh icon on the Apps tab or remove and add the GitHub app again after the latest commit is visible on GitHub.
+
+The Python package metadata also uses the Frappe app module name:
+
+```text
+project.name = login_with_haravan
+setup(name="login_with_haravan")
+```
+
+Do not change those values to `login-with-haravan`; Frappe Cloud may try to import the metadata name as a Python module.
