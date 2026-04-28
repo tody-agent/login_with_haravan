@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "method",
+ "creation": "2026-04-28 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "identity_section",
+  "user",
+  "email",
+  "last_login",
+  "haravan_section",
+  "haravan_userid",
+  "haravan_orgid",
+  "haravan_orgname",
+  "haravan_orgcat",
+  "haravan_roles",
+  "raw_profile"
+ ],
+ "fields": [
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Frappe Identity"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "last_login",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Login"
+  },
+  {
+   "fieldname": "haravan_section",
+   "fieldtype": "Section Break",
+   "label": "Haravan Identity"
+  },
+  {
+   "fieldname": "haravan_userid",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Haravan User ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "haravan_orgid",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Haravan Org ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "haravan_orgname",
+   "fieldtype": "Data",
+   "label": "Haravan Org Name"
+  },
+  {
+   "fieldname": "haravan_orgcat",
+   "fieldtype": "Data",
+   "label": "Haravan Org Category"
+  },
+  {
+   "fieldname": "haravan_roles",
+   "fieldtype": "Small Text",
+   "label": "Haravan Roles"
+  },
+  {
+   "fieldname": "raw_profile",
+   "fieldtype": "Code",
+   "label": "Raw Profile",
+   "options": "JSON"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Login With Haravan",
+ "name": "Haravan Account Link",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "email",
+ "track_changes": 1
+}

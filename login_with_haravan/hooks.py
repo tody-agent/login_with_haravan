@@ -1,0 +1,9 @@
+app_name = "login_with_haravan"
+app_title = "Login With Haravan"
+app_publisher = "Haravan"
+app_description = "Social login bridge from Haravan Account to Frappe Helpdesk"
+app_email = "dev@haravan.com"
+app_license = "MIT"
+
+after_install = "login_with_haravan.setup.install.after_install"
+after_migrate = "login_with_haravan.setup.install.after_migrate"

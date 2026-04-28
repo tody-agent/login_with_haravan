@@ -1,0 +1,11 @@
+from setuptools import find_packages, setup
+
+setup(
+    name="login-with-haravan",
+    version="0.1.0",
+    description="Login with Haravan Account for Frappe Helpdesk",
+    author="Haravan",
+    packages=find_packages(),
+    include_package_data=True,
+    zip_safe=False,
+)
