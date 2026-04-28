@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "login_with_haravan"
-version = "0.1.0"
+version = "0.1.1"
 description = "Login with Haravan Account for Frappe Helpdesk"
 readme = "README.md"
 requires-python = ">=3.10"
