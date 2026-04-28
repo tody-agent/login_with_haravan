@@ -1,0 +1,2 @@
+# No external Python dependencies.
+# Runtime dependency is Frappe Framework from the target bench.
