@@ -64,12 +64,13 @@ openspec/changes/haravan-social-login/design.md
 openspec/changes/haravan-social-login/tasks.md
 openspec/changes/haravan-social-login/specs/social-login/spec.md
 docs/AGENT_HANDOFF.md
+docs/NEXT_STEPS_FOR_AGENT.md
 docs/OAUTH_FLOW.md
 docs/CONFIGURATION.md
 docs/TROUBLESHOOTING.md
 ```
 
-Start with `AGENTS.md`, then `openspec/project.md`, then `.cm/CONTINUITY.md`.
+Start with `AGENTS.md`, then `openspec/project.md`, then `.cm/CONTINUITY.md`, then `docs/NEXT_STEPS_FOR_AGENT.md`.
 
 ## Run Tests
 

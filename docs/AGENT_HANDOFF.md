@@ -22,8 +22,9 @@ It is intentionally separated from:
 1. Read `openspec/project.md`.
 2. Read `openspec/changes/haravan-social-login/design.md`.
 3. Read `.cm/CONTINUITY.md`.
-4. Inspect `login_with_haravan/setup/install.py`.
-5. Inspect `login_with_haravan/oauth.py`.
+4. Read `docs/NEXT_STEPS_FOR_AGENT.md`.
+5. Inspect `login_with_haravan/setup/install.py`.
+6. Inspect `login_with_haravan/oauth.py`.
 
 ## Safe Next Coding Tasks
 

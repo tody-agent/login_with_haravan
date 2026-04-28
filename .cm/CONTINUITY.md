@@ -57,3 +57,4 @@ Latest known version/tag:
 2. Confirm Haravan Partner Dashboard has the exact callback URL.
 3. Copy the login button link and decode `redirect_uri` if Haravan still rejects.
 4. After successful login, verify `Haravan Account Link` records contain `email`, `haravan_userid`, `haravan_orgid`.
+5. Use `docs/NEXT_STEPS_FOR_AGENT.md` as the production setup checklist.

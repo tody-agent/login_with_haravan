@@ -93,3 +93,11 @@ Remove temporary artifacts before committing:
 rm -rf build dist *.egg-info /tmp/login_with_haravan_wheel_test
 find . -type d -name __pycache__ -prune -exec rm -rf {} +
 ```
+
+## Next Deployment/Configuration Work
+
+Read this file before continuing production setup:
+
+```text
+docs/NEXT_STEPS_FOR_AGENT.md
+```
