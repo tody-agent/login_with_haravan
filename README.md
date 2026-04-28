@@ -51,3 +51,9 @@ bench --site boxme.localhost clear-cache
 ```
 
 Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md).
+
+## Run Tests
+
+```bash
+PYTHONPATH=. python3 -m unittest discover -s login_with_haravan/tests -v
+```

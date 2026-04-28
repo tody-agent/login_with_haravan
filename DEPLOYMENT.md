@@ -118,3 +118,16 @@ If login returns but the account link is missing, check Error Log entries named:
 Haravan social login failed
 Haravan Account Link persistence failed
 ```
+
+## Frappe Cloud App Validation
+
+This repository follows the standard Frappe app layout:
+
+```text
+login_with_haravan/
+  hooks.py
+  modules.txt
+  patches.txt
+```
+
+If Frappe Cloud still says `Not a valid Frappe App`, click the refresh icon on the Apps tab or remove and add the GitHub app again after the latest commit is visible on GitHub.
