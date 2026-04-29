@@ -16,7 +16,9 @@ Tài liệu này được thiết kế dành riêng cho **Haravan Developers** (
 1. **SSO Identity Provider:** Đóng vai trò là cầu nối OAuth 2.0 cho Frappe Helpdesk, cho phép các merchant đăng nhập một chạm từ hệ sinh thái Haravan.
 2. **Profile Sync Engine:** Tự động lắng nghe và trích xuất dữ liệu tổ chức (OrgID, Shop Plan, Domain) từ Haravan Profile để tạo hoặc cập nhật thông tin `HD Customer` trong Frappe Helpdesk.
 
-Hệ thống đã đạt mức **Production-ready** cho nhu cầu xác thực và phân luồng ticket (Hỗ trợ tốt mô hình 1 user thuộc nhiều org).
+Hệ thống đã đạt mức **Production-ready** cho nhu cầu xác thực và phân luồng ticket. Một số tính năng dữ liệu nâng cao đã được hoàn thiện:
+- Quản lý Ticket theo Role: Tự động phân quyền xem toàn bộ ticket cho `owner`/`admin` và thu hẹp scope cho nhân viên (`staff`).
+- Đồng bộ Ngày kích hoạt (First Paid Date): Lấy từ API Subscription và fallback thông minh về ngày tạo Shop để hỗ trợ chia team theo thời gian vòng đời.
 
 ## 2. Hướng dẫn Bảo trì (Maintenance Guide)
 

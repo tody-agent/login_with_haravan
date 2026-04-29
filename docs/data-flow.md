@@ -38,4 +38,7 @@ sequenceDiagram
 Logic chính nằm ở `login_with_haravan/engines/sync_helpdesk.py`:
 1. **Tìm kiếm HD Customer:** Ưu tiên tìm theo `custom_haravan_orgid`. Nếu không có, tìm theo tên `[OrgID] - [OrgName]`.
 2. **Tạo/Cập nhật:** Cập nhật các trường `domain`, `custom_shopplan_name`.
-3. **Contact:** Tạo Contact theo email và link với HD Customer tương ứng.
+3. **First Paid Date (Fallback logic):** Trường `custom_first_paid_date` được ưu tiên lấy từ `subscription_created_at` (API Gói dịch vụ). Nếu trống, hệ thống sẽ sử dụng `shop.created_at` làm giá trị thay thế (chỉ điền 1 lần khi tạo mới).
+4. **Phân quyền Contact (Role-based Linking):**
+   - **Owner / Admin:** Được tự động tạo `Contact` và liên kết (link) với `HD Customer`. Nhờ đó, họ có thể **xem toàn bộ ticket** của tổ chức.
+   - **Staff:** Tạo `Contact` nhưng **KHÔNG** liên kết với `HD Customer`. Nhân viên chỉ có thể **xem các ticket do chính họ tạo ra**.
