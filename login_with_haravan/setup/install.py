@@ -58,7 +58,7 @@ def configure_haravan_social_login(
                 {
                     "response_mode": "query",
                     "response_type": "code",
-                    "scope": "openid profile email org userinfo",
+                    "scope": "openid profile email org userinfo com.read_shop",
                 }
             ),
             "user_id_property": "sub",
