@@ -8,6 +8,7 @@ from login_with_haravan.engines.haravan_identity import (
     normalize_haravan_profile,
 )
 from login_with_haravan.engines.oauth_payload import decode_json_payload
+from login_with_haravan.engines.oauth_state import decode_oauth_state, encode_oauth_state
 
 
 class HaravanIdentityTest(unittest.TestCase):
@@ -61,6 +62,15 @@ class HaravanIdentityTest(unittest.TestCase):
 
         self.assertEqual(decode_json_payload(json.dumps(payload).encode("utf-8")), payload)
         self.assertEqual(decode_json_payload(json.dumps(payload)), payload)
+
+    def test_oauth_state_round_trips_redirect_to(self):
+        state = {
+            "site": "https://haravandesk.s.frappe.cloud",
+            "token": "abc",
+            "redirect_to": "https://haravandesk.s.frappe.cloud/helpdesk/my-tickets/new",
+        }
+
+        self.assertEqual(decode_oauth_state(encode_oauth_state(state)), state)
 
 
 if __name__ == "__main__":

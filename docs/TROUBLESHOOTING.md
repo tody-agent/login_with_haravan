@@ -82,3 +82,20 @@ non-secret Social Login Key configuration:
 ```text
 login_with_haravan.diagnostics.get_haravan_login_status
 ```
+
+## Login Returns To `/desk` Instead Of Previous Helpdesk Page
+
+Expected flow:
+
+```text
+/helpdesk/my-tickets/new
+  -> /login?redirect-to=/helpdesk/my-tickets/new
+  -> Login with Haravan Account
+  -> /helpdesk/my-tickets/new
+```
+
+The app includes `/assets/login_with_haravan/js/haravan_login_redirect.js` on
+website pages. On `/login`, it stores the `redirect-to` target in a short-lived
+cookie and rewrites the Haravan OAuth `state.redirect_to` before the user leaves
+for Haravan. The callback also reads this cookie as a fallback and overrides
+`state.redirect_to` before calling Frappe's `login_oauth_user`.

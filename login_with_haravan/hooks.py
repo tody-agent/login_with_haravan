@@ -8,3 +8,5 @@ app_license = "MIT"
 
 after_install = "login_with_haravan.setup.install.after_install"
 after_migrate = "login_with_haravan.setup.install.after_migrate"
+
+web_include_js = ["/assets/login_with_haravan/js/haravan_login_redirect.js"]

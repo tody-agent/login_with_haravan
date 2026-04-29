@@ -1,1 +1,1 @@
-recursive-include login_with_haravan *.json *.py *.txt *.md
+recursive-include login_with_haravan *.json *.py *.txt *.md *.js

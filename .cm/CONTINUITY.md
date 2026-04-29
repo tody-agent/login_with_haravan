@@ -51,6 +51,16 @@ Latest known version/tag:
   How to Prevent: Register exact callback URL in Haravan Partner Dashboard and confirm the copied login link's `redirect_uri`.
   Scope: OAuth configuration.
 
+- What Failed: Haravan callback surfaced as `417: Uncaught Exception` without enough production detail.
+  Why It Failed: Callback logging only wrote a generic traceback after several OAuth boundaries, and the token response decoder was not robust for both `bytes` and `str` payloads.
+  How to Prevent: Log a safe OAuth `stage` before re-raising callback exceptions and keep token/userinfo parsing helpers in pure engine modules with standalone tests.
+  Scope: module:login_with_haravan.oauth.
+
+- What Failed: After Login with Haravan, users could be sent to `/desk` instead of the Helpdesk page they originally opened.
+  Why It Failed: Frappe social login redirects only to `state.redirect_to`; if `/login` loses or defaults the `redirect-to` query, the OAuth state defaults to Desk.
+  How to Prevent: Preserve same-origin Helpdesk redirect targets on `/login` and override Haravan callback state from a short-lived cookie before calling `login_oauth_user`.
+  Scope: module:login_with_haravan.oauth.
+
 ## Next Actions
 
 1. Confirm the Social Login Key exists and is enabled in Frappe.
