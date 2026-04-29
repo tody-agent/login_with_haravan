@@ -15,12 +15,21 @@ HD Customer field mapping (production):
   - custom_expired_date (Datetime): plan expiry date
   - custom_customer_segment (Select): "SME" | "Medium" | "Enterprise"
   - custom_hsi_segment (Select): "0" | "1" | "100" | "200" | "500" | "500+"
-  - custom_first_paid_date (Datetime): first paid timestamp
+  - custom_first_paid_date (Datetime): first paid timestamp (from subscription or shop.created_at)
+
+Role-based Contact → HD Customer linking:
+  - owner, admin → Contact linked to HD Customer → sees ALL org tickets
+  - staff (or other) → Contact NOT linked → sees only OWN tickets
 """
 
 import frappe
 from frappe.utils import now_datetime
 from datetime import datetime
+
+# Haravan roles that grant org-wide ticket visibility via Contact → HD Customer link.
+# owner/admin can see ALL tickets of their Haravan org in the Helpdesk portal.
+# Staff users only see tickets they created themselves.
+HD_CUSTOMER_LINK_ROLES = {"owner", "admin"}
 
 def _format_haravan_date(iso_str: str) -> str | None:
     if not iso_str:
@@ -49,9 +58,14 @@ def enrich_helpdesk_data(user: str, profile: dict):
     # 2. Upsert HD Customer from Haravan org
     hd_customer_name = upsert_hd_customer(normalized)
 
-    # 3. Upsert Contact and link to HD Customer
+    # 3. Upsert Contact — only link to HD Customer if user has manager role
     if normalized.get("email"):
-        upsert_contact(normalized, hd_customer_name)
+        user_roles = set(normalized.get("role", []))
+        should_link = bool(user_roles & HD_CUSTOMER_LINK_ROLES)
+        upsert_contact(
+            normalized,
+            hd_customer_name if should_link else None,
+        )
 
     return hd_customer_name
 
@@ -151,9 +165,13 @@ def upsert_hd_customer(normalized: dict) -> str | None:
             formatted_expired = _format_haravan_date(expired)
             if formatted_expired:
                 doc.custom_expired_date = formatted_expired
-        first_paid_date = org_data.get("subscription_created_at")
-        if first_paid_date:
-            formatted_date = _format_haravan_date(first_paid_date)
+        # First paid date: subscription_created_at (priority) or shop.created_at (fallback)
+        first_paid_raw = (
+            org_data.get("subscription_created_at")
+            or org_data.get("created_at")
+        )
+        if first_paid_raw:
+            formatted_date = _format_haravan_date(first_paid_raw)
             if formatted_date:
                 doc.custom_first_paid_date = formatted_date
 
@@ -223,9 +241,13 @@ def _update_hd_customer_metadata(
             doc.custom_country = country
             changed = True
 
-        first_paid_date = org_data.get("subscription_created_at")
-        if first_paid_date and not doc.custom_first_paid_date:
-            formatted_date = _format_haravan_date(first_paid_date)
+        # First paid date: subscription_created_at (priority) or shop.created_at (fallback)
+        first_paid_raw = (
+            org_data.get("subscription_created_at")
+            or org_data.get("created_at")
+        )
+        if first_paid_raw and not doc.custom_first_paid_date:
+            formatted_date = _format_haravan_date(first_paid_raw)
             if formatted_date:
                 doc.custom_first_paid_date = formatted_date
                 changed = True

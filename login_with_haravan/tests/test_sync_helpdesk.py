@@ -30,6 +30,7 @@ def _reset_frappe_mock():
     frappe_mock.get_all.return_value = []
 
 from login_with_haravan.engines.sync_helpdesk import (
+    HD_CUSTOMER_LINK_ROLES,
     _make_hd_customer_name,
     _safe_int,
     auto_set_customer,
@@ -346,6 +347,90 @@ class TestUpsertContact(unittest.TestCase):
         frappe_mock.db.get_value.assert_not_called()
 
 
+class TestRoleBasedLinking(unittest.TestCase):
+    """Test role-based Contact → HD Customer linking via enrich_helpdesk_data."""
+
+    def setUp(self):
+        _reset_frappe_mock()
+
+    def test_hd_customer_link_roles_constant(self):
+        """Sanity check: owner and admin are in the link-eligible roles."""
+        self.assertIn("owner", HD_CUSTOMER_LINK_ROLES)
+        self.assertIn("admin", HD_CUSTOMER_LINK_ROLES)
+        self.assertNotIn("staff", HD_CUSTOMER_LINK_ROLES)
+
+    @patch("login_with_haravan.engines.sync_helpdesk.upsert_contact")
+    @patch("login_with_haravan.engines.sync_helpdesk.upsert_hd_customer")
+    @patch("login_with_haravan.engines.sync_helpdesk.update_user_profile")
+    @patch("login_with_haravan.engines.haravan_identity.normalize_haravan_profile")
+    def test_owner_gets_hd_customer_link(self, mock_normalize, mock_update, mock_upsert_cust, mock_upsert_contact):
+        """Owner role → Contact linked to HD Customer."""
+        mock_normalize.return_value = {
+            "email": "owner@shop.com", "orgid": "123", "orgname": "Shop",
+            "role": ["owner"],
+        }
+        mock_upsert_cust.return_value = "123 - Shop"
+
+        enrich_helpdesk_data("owner@shop.com", {})
+
+        mock_upsert_contact.assert_called_once()
+        args = mock_upsert_contact.call_args
+        self.assertEqual(args[0][1], "123 - Shop")  # hd_customer_name passed
+
+    @patch("login_with_haravan.engines.sync_helpdesk.upsert_contact")
+    @patch("login_with_haravan.engines.sync_helpdesk.upsert_hd_customer")
+    @patch("login_with_haravan.engines.sync_helpdesk.update_user_profile")
+    @patch("login_with_haravan.engines.haravan_identity.normalize_haravan_profile")
+    def test_admin_gets_hd_customer_link(self, mock_normalize, mock_update, mock_upsert_cust, mock_upsert_contact):
+        """Admin role → Contact linked to HD Customer."""
+        mock_normalize.return_value = {
+            "email": "admin@shop.com", "orgid": "123", "orgname": "Shop",
+            "role": ["admin"],
+        }
+        mock_upsert_cust.return_value = "123 - Shop"
+
+        enrich_helpdesk_data("admin@shop.com", {})
+
+        mock_upsert_contact.assert_called_once()
+        args = mock_upsert_contact.call_args
+        self.assertEqual(args[0][1], "123 - Shop")
+
+    @patch("login_with_haravan.engines.sync_helpdesk.upsert_contact")
+    @patch("login_with_haravan.engines.sync_helpdesk.upsert_hd_customer")
+    @patch("login_with_haravan.engines.sync_helpdesk.update_user_profile")
+    @patch("login_with_haravan.engines.haravan_identity.normalize_haravan_profile")
+    def test_staff_does_not_get_hd_customer_link(self, mock_normalize, mock_update, mock_upsert_cust, mock_upsert_contact):
+        """Staff role → Contact NOT linked to HD Customer (sees only own tickets)."""
+        mock_normalize.return_value = {
+            "email": "staff@shop.com", "orgid": "123", "orgname": "Shop",
+            "role": ["staff"],
+        }
+        mock_upsert_cust.return_value = "123 - Shop"
+
+        enrich_helpdesk_data("staff@shop.com", {})
+
+        mock_upsert_contact.assert_called_once()
+        args = mock_upsert_contact.call_args
+        self.assertIsNone(args[0][1])  # hd_customer_name is None
+
+    @patch("login_with_haravan.engines.sync_helpdesk.upsert_contact")
+    @patch("login_with_haravan.engines.sync_helpdesk.upsert_hd_customer")
+    @patch("login_with_haravan.engines.sync_helpdesk.update_user_profile")
+    @patch("login_with_haravan.engines.haravan_identity.normalize_haravan_profile")
+    def test_empty_role_does_not_get_link(self, mock_normalize, mock_update, mock_upsert_cust, mock_upsert_contact):
+        """Empty role → Contact NOT linked to HD Customer."""
+        mock_normalize.return_value = {
+            "email": "norole@shop.com", "orgid": "123", "orgname": "Shop",
+            "role": [],
+        }
+        mock_upsert_cust.return_value = "123 - Shop"
+
+        enrich_helpdesk_data("norole@shop.com", {})
+
+        args = mock_upsert_contact.call_args
+        self.assertIsNone(args[0][1])
+
+
 class TestAutoSetCustomer(unittest.TestCase):
     def setUp(self):
         _reset_frappe_mock()
@@ -398,6 +483,60 @@ class TestAutoSetCustomer(unittest.TestCase):
 
         self.assertIsNone(doc.customer)
         frappe_mock.get_all.assert_not_called()
+
+class TestFirstPaidDateFallback(unittest.TestCase):
+    """Test that custom_first_paid_date uses shop.created_at as fallback."""
+
+    def setUp(self):
+        _reset_frappe_mock()
+
+    def test_create_uses_shop_created_at_when_no_subscription(self):
+        """Should use shop.created_at for first_paid_date when subscription is empty."""
+        frappe_mock.db.get_value.side_effect = [None, None]
+        doc = MagicMock()
+        doc.name = "12345 - Test Shop"
+        frappe_mock.new_doc.return_value = doc
+
+        normalized = {
+            "orgid": "12345",
+            "orgname": "Test Shop",
+            "haravan_org_data": {
+                "plan_display_name": "AFFILIATE",
+                "created_at": "2020-04-20T17:07:15.58Z",
+                # no subscription_created_at
+            },
+        }
+        upsert_hd_customer(normalized)
+
+        self.assertIsNotNone(doc.custom_first_paid_date)
+        # Timezone-agnostic: just verify it starts with correct date portion
+        self.assertTrue(
+            doc.custom_first_paid_date.startswith("2020-04-2"),
+            f"Expected date near 2020-04-20, got {doc.custom_first_paid_date}"
+        )
+
+    def test_create_prefers_subscription_over_shop_created_at(self):
+        """Should use subscription_created_at when available (higher priority)."""
+        frappe_mock.db.get_value.side_effect = [None, None]
+        doc = MagicMock()
+        doc.name = "12345 - Test Shop"
+        frappe_mock.new_doc.return_value = doc
+
+        normalized = {
+            "orgid": "12345",
+            "orgname": "Test Shop",
+            "haravan_org_data": {
+                "subscription_created_at": "2021-06-15T10:00:00Z",
+                "created_at": "2020-04-20T17:07:15.58Z",
+            },
+        }
+        upsert_hd_customer(normalized)
+
+        self.assertIsNotNone(doc.custom_first_paid_date)
+        self.assertTrue(
+            doc.custom_first_paid_date.startswith("2021-06-15"),
+            f"Expected date starting with 2021-06-15, got {doc.custom_first_paid_date}"
+        )
 
 
 if __name__ == "__main__":
