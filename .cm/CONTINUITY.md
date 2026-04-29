@@ -64,7 +64,7 @@ Latest known version/tag:
 
 - What Failed: First-time Haravan login sent a new Website User to `/%2Fdesk%2Fhd-ai-settings` and showed `Not Permitted`.
   Why It Failed: Missing or invalid Haravan OAuth `state.redirect_to` let Frappe fall back to the Desk default app route `/desk/hd-ai-settings`, which Website Users cannot access.
-  How to Prevent: Normalize Haravan callback redirects to valid `/helpdesk/...` targets and fall back to `/helpdesk/my-tickets` on the current site domain when the state is missing, encoded, or points to Desk.
+  How to Prevent: Normalize Haravan callback redirects to clear `/helpdesk/my-tickets...` targets and fall back to `/helpdesk/my-tickets` on the current site domain when the state is missing, encoded, stale, or points to Desk/unknown pages.
   Scope: module:login_with_haravan.oauth.
 
 ## Next Actions

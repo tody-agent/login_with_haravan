@@ -97,7 +97,8 @@ Expected flow:
 The app includes `/assets/login_with_haravan/js/haravan_login_redirect.js` on
 website pages. On `/login`, it stores the `redirect-to` target in a short-lived
 cookie and rewrites the Haravan OAuth `state.redirect_to` before the user leaves
-for Haravan. The callback also reads this cookie as a fallback and overrides
+for Haravan. The callback also reads this cookie as a fallback, normalizes the
+target to a clear `/helpdesk/my-tickets...` route, and overrides
 `state.redirect_to` before calling Frappe's `login_oauth_user`.
 
 If the OAuth state has no valid `/helpdesk/...` target, the callback falls back to
@@ -108,6 +109,7 @@ the ticket list:
 ```
 
 This prevents new Website Users from being sent to Desk-only default app routes
-such as `/desk/hd-ai-settings`. The fallback URL is built from the current Frappe
-site URL, so it follows a custom domain such as `https://haravan.help` instead of
-hardcoding the original Frappe Cloud domain.
+such as `/desk/hd-ai-settings`, unknown Helpdesk paths, or stale absolute URLs.
+The fallback URL is built from the current Frappe site URL, so it follows a
+custom domain such as `https://haravan.help` instead of hardcoding the original
+Frappe Cloud domain.
