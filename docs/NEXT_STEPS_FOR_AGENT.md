@@ -380,5 +380,71 @@ The integration is complete when:
 - [ ] Social Login Key is enabled and visible on login page.
 - [ ] Haravan accepts OAuth authorize request.
 - [ ] User returns to Frappe and is logged in.
-- [ ] `Haravan Account Link` is created/updated with `email`, `haravan_userid`, `haravan_orgid`.
+- [ ] `Haravan Account Link` is created/updated with `email`, `haravan_userid`, `haravan_orgid`, `hd_customer`.
+- [ ] `HD Customer` has `haravan_orgid` Custom Field (auto-created by after_migrate).
+- [ ] HD Customer names follow `[OrgID] - [OrgName]` format.
+- [ ] Multi-org users see the org selector on `/helpdesk/my-tickets/new`.
+- [ ] Single-org users have customer auto-assigned on ticket creation.
 - [ ] Troubleshooting notes are updated with any new production-specific findings.
+
+## Step 6.5: Verify HD Customer Integration
+
+Goal: confirm the Haravan org → HD Customer sync works after deploy.
+
+After `bench migrate` (or Frappe Cloud auto-deploy), verify:
+
+1. **Custom Field exists**:
+
+```text
+Desk > Search "Custom Field" > Find "HD Customer-haravan_orgid"
+```
+
+If missing, trigger manually:
+
+```text
+bench --site <site> execute login_with_haravan.setup.install.ensure_hd_customer_custom_fields
+```
+
+2. **HD Customer naming**:
+
+After a user logs in via Haravan, an HD Customer should be created with name:
+
+```text
+[OrgID] - [OrgName]
+Example: 12345 - Minh Hải Store
+```
+
+3. **Org selector (multi-org)**:
+
+For users linked to multiple Haravan organizations:
+
+- Visit `/helpdesk/my-tickets/new`
+- A "Tổ chức / Cửa hàng Haravan" dropdown should appear
+- Selecting an org sets the ticket customer via XHR interception
+
+4. **Auto-assignment (single-org)**:
+
+For users linked to exactly 1 Haravan organization:
+
+- The ticket's `customer` field is auto-set by the `before_insert` hook
+- No org selector is shown
+
+5. **API endpoint**:
+
+Test the org list API:
+
+```text
+/api/method/login_with_haravan.oauth.get_user_haravan_orgs
+```
+
+Should return:
+
+```json
+[
+  {
+    "orgid": "12345",
+    "orgname": "Minh Hải Store",
+    "customer": "12345 - Minh Hải Store"
+  }
+]
+```
