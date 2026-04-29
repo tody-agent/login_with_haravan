@@ -99,3 +99,12 @@ website pages. On `/login`, it stores the `redirect-to` target in a short-lived
 cookie and rewrites the Haravan OAuth `state.redirect_to` before the user leaves
 for Haravan. The callback also reads this cookie as a fallback and overrides
 `state.redirect_to` before calling Frappe's `login_oauth_user`.
+
+If the OAuth state has no valid `/helpdesk/...` target, the callback falls back to:
+
+```text
+/helpdesk/my-tickets/new
+```
+
+This prevents new Website Users from being sent to Desk-only default app routes
+such as `/desk/hd-ai-settings`.
