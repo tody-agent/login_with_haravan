@@ -67,6 +67,11 @@ Latest known version/tag:
   How to Prevent: Normalize Haravan callback redirects to clear `/helpdesk/my-tickets...` targets and fall back to `/helpdesk/my-tickets` on the current site domain when the state is missing, encoded, stale, or points to Desk/unknown pages.
   Scope: module:login_with_haravan.oauth.
 
+- What Failed: GitHub Actions failed importing `login_with_haravan.engines.haravan_api` with `ModuleNotFoundError: No module named 'requests'`.
+  Why It Failed: The app used `requests` for Haravan API calls, but package metadata and the test gate still declared no Python dependencies, so clean CI environments did not install it before source tests imported the module.
+  How to Prevent: Declare runtime HTTP client dependencies in `requirements.txt`, `pyproject.toml`, and `setup.py`, and keep `test_gate.sh` installing `requirements.txt` before import-based tests.
+  Scope: project-wide Python dependency metadata.
+
 ## Next Actions
 
 1. Confirm the Social Login Key exists and is enabled in Frappe.

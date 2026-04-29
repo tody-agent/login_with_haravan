@@ -25,6 +25,9 @@ fi
 
 # 3. Python Tests Gate
 echo ">> [3/3] Running Test Gate Layers (Security, Logic, API, Frontend Safety)..."
+if ! python3 -c "import requests" >/dev/null 2>&1; then
+    python3 -m pip install -r requirements.txt
+fi
 export PYTHONPATH=.
 python3 -m unittest discover -s login_with_haravan/tests -v
 echo "✅ Python Tests passed."
