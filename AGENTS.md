@@ -101,3 +101,14 @@ Read this file before continuing production setup:
 ```text
 docs/NEXT_STEPS_FOR_AGENT.md
 ```
+
+## Agent Workflow (Solo Vibe Coding)
+
+To ensure maximum safety and velocity, Antigravity MUST adhere to this workflow:
+
+1. **Never commit directly to `main`**: Always use feature branches (e.g., `codex/feature-name`).
+2. **Run Local Tests**: Always execute `./test_gate.sh` or `npm run test` to verify changes locally before shipping.
+3. **Ship via Script**: Once a feature or bugfix is complete, you MUST use `npm run ship` (or `./ship.sh`).
+   - DO NOT run `git push origin main` or handle GitHub PRs manually.
+   - `ship.sh` will automatically run tests (via `pre-push`), push the branch, merge it into `main`, and push `main` safely.
+4. **Resolve Conflicts Locally**: If `ship.sh` detects conflicts when merging to `main`, handle them locally, commit, and then push `main`.

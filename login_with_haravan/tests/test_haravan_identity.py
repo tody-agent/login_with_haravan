@@ -69,9 +69,9 @@ class HaravanIdentityTest(unittest.TestCase):
 
     def test_oauth_state_round_trips_redirect_to(self):
         state = {
-            "site": "https://haravandesk.s.frappe.cloud",
+            "site": "https://haravan.help",
             "token": "abc",
-            "redirect_to": "https://haravandesk.s.frappe.cloud/helpdesk/my-tickets/new",
+            "redirect_to": "https://haravan.help/helpdesk/my-tickets/new",
         }
 
         self.assertEqual(decode_oauth_state(encode_oauth_state(state)), state)
@@ -82,15 +82,20 @@ class HaravanIdentityTest(unittest.TestCase):
             "/helpdesk/my-tickets/new",
         )
         self.assertEqual(
-            normalize_helpdesk_redirect("https://haravandesk.s.frappe.cloud/helpdesk/my-tickets/new"),
-            "https://haravandesk.s.frappe.cloud/helpdesk/my-tickets/new",
+            normalize_helpdesk_redirect("https://haravan.help/helpdesk/my-tickets/new"),
+            "https://haravan.help/helpdesk/my-tickets/new",
         )
 
     def test_rejects_missing_encoded_or_desk_redirects(self):
-        self.assertEqual(normalize_helpdesk_redirect(None), DEFAULT_HELPDESK_REDIRECT)
+        self.assertEqual(normalize_helpdesk_redirect(None), "/helpdesk/my-tickets")
         self.assertEqual(normalize_helpdesk_redirect("/desk/hd-ai-settings"), DEFAULT_HELPDESK_REDIRECT)
         self.assertEqual(
             normalize_helpdesk_redirect("%2Fdesk%2Fhd-ai-settings"),
+            DEFAULT_HELPDESK_REDIRECT,
+        )
+        self.assertEqual(normalize_helpdesk_redirect("/missing-page"), DEFAULT_HELPDESK_REDIRECT)
+        self.assertEqual(
+            normalize_helpdesk_redirect("https://haravan.help/notfound"),
             DEFAULT_HELPDESK_REDIRECT,
         )
 
