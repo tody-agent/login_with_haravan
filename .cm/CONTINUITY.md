@@ -33,6 +33,7 @@ Latest known version/tag:
 - Store Haravan identity in custom DocType `Haravan Account Link`.
 - Keep pure claim normalization in `login_with_haravan/engines/haravan_identity.py`.
 - Keep Frappe DB writes in `login_with_haravan/oauth.py`.
+- Enforce solo vibe coding workflow: always work in feature branches and use `npm run ship` (or `./ship.sh`) to automatically push, merge to `main`, and push `main` safely.
 
 ## Mistakes & Learnings
 
@@ -63,7 +64,7 @@ Latest known version/tag:
 
 - What Failed: First-time Haravan login sent a new Website User to `/%2Fdesk%2Fhd-ai-settings` and showed `Not Permitted`.
   Why It Failed: Missing or invalid Haravan OAuth `state.redirect_to` let Frappe fall back to the Desk default app route `/desk/hd-ai-settings`, which Website Users cannot access.
-  How to Prevent: Normalize Haravan callback redirects to valid `/helpdesk/...` targets and fall back to `/helpdesk/my-tickets/new` when the state is missing, encoded, or points to Desk.
+  How to Prevent: Normalize Haravan callback redirects to valid `/helpdesk/...` targets and fall back to `/helpdesk/my-tickets` on the current site domain when the state is missing, encoded, or points to Desk.
   Scope: module:login_with_haravan.oauth.
 
 ## Next Actions

@@ -100,11 +100,14 @@ cookie and rewrites the Haravan OAuth `state.redirect_to` before the user leaves
 for Haravan. The callback also reads this cookie as a fallback and overrides
 `state.redirect_to` before calling Frappe's `login_oauth_user`.
 
-If the OAuth state has no valid `/helpdesk/...` target, the callback falls back to:
+If the OAuth state has no valid `/helpdesk/...` target, the callback falls back to
+the ticket list:
 
 ```text
-/helpdesk/my-tickets/new
+/helpdesk/my-tickets
 ```
 
 This prevents new Website Users from being sent to Desk-only default app routes
-such as `/desk/hd-ai-settings`.
+such as `/desk/hd-ai-settings`. The fallback URL is built from the current Frappe
+site URL, so it follows a custom domain such as `https://haravan.help` instead of
+hardcoding the original Frappe Cloud domain.

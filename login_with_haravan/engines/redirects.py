@@ -1,7 +1,7 @@
 from urllib.parse import unquote, urlparse, urlunparse
 
 
-DEFAULT_HELPDESK_REDIRECT = "/helpdesk/my-tickets/new"
+DEFAULT_HELPDESK_REDIRECT = "/helpdesk/my-tickets"
 
 
 def normalize_helpdesk_redirect(redirect_to: str | None) -> str:
