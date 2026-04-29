@@ -9,6 +9,7 @@ from frappe.www.login import sanitize_redirect
 
 from login_with_haravan.engines.oauth_payload import decode_json_payload
 from login_with_haravan.engines.oauth_state import decode_oauth_state, encode_oauth_state
+from login_with_haravan.engines.haravan_api import fetch_haravan_info_and_token, fetch_org_and_subscription_data
 from login_with_haravan.engines.redirects import normalize_helpdesk_redirect
 from login_with_haravan.engines.haravan_identity import (
     build_link_fields,
@@ -91,7 +92,13 @@ def login_via_haravan(code: str | None = None, state: str | None = None, **kwarg
     state = _with_redirect_override(state)
 
     try:
-        info = get_info_via_oauth(PROVIDER, code, decoder=decoder_compat)
+        info, access_token = fetch_haravan_info_and_token(code, decoder=decoder_compat)
+        try:
+            org_data = fetch_org_and_subscription_data(access_token)
+            if isinstance(info, dict):
+                info["haravan_org_data"] = org_data
+        except Exception as e:
+            frappe.log_error(f"Failed to fetch extra Haravan org data: {e}", "Haravan OAuth Extra")
 
     except Exception as exc:
         _log_oauth_failure(

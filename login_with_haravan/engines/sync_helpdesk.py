@@ -16,6 +16,17 @@ HD Customer field mapping (production):
 
 import frappe
 from frappe.utils import now_datetime
+from datetime import datetime
+
+def _format_haravan_date(iso_str: str) -> str | None:
+    if not iso_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        # Convert to local server timezone
+        return dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return None
 
 
 def enrich_helpdesk_data(user: str, profile: dict):
@@ -121,6 +132,16 @@ def upsert_hd_customer(normalized: dict) -> str | None:
         doc.domain = f"{org_id}.myharavan.com"
         doc.custom_haravan_orgid = org_id_int
         doc.custom_myharavan = f"{org_id}.myharavan.com"
+
+        org_data = normalized.get("haravan_org_data", {})
+        if org_data.get("display_plan_name"):
+            doc.custom_shopplan_name = org_data.get("display_plan_name")
+        first_paid_date = org_data.get("subscription_created_at")
+        if first_paid_date:
+            formatted_date = _format_haravan_date(first_paid_date)
+            if formatted_date:
+                doc.custom_first_paid_date = formatted_date
+
         doc.flags.ignore_permissions = True
         doc.insert(ignore_permissions=True)
         return doc.name
@@ -155,6 +176,19 @@ def _update_hd_customer_metadata(
         if domain and not doc.custom_myharavan:
             doc.custom_myharavan = domain
             changed = True
+
+        org_data = normalized.get("haravan_org_data", {})
+        plan_name = org_data.get("display_plan_name")
+        if plan_name and doc.custom_shopplan_name != plan_name:
+            doc.custom_shopplan_name = plan_name
+            changed = True
+
+        first_paid_date = org_data.get("subscription_created_at")
+        if first_paid_date and not doc.custom_first_paid_date:
+            formatted_date = _format_haravan_date(first_paid_date)
+            if formatted_date:
+                doc.custom_first_paid_date = formatted_date
+                changed = True
 
         if changed:
             doc.flags.ignore_permissions = True
