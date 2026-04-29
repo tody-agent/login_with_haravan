@@ -26,7 +26,7 @@ ln -sfn /Volumes/Data/Haravan/login_with_haravan apps/login_with_haravan
 bench --site boxme.localhost install-app login_with_haravan
 
 # 4. Cấu hình Credentials
-bench --site boxme.localhost set-config haravan_login '{"client_id":"YOUR_ID","client_secret":"YOUR_SECRET"}'
+bench --site boxme.localhost set-config haravan_account_login '{"client_id":"YOUR_ID","client_secret":"YOUR_SECRET"}'
 
 # 5. Khởi tạo Social Login Key
 bench --site boxme.localhost execute login_with_haravan.setup.install.configure_haravan_social_login

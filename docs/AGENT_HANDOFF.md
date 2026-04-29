@@ -28,8 +28,8 @@ It is intentionally separated from:
 
 ## Safe Next Coding Tasks
 
-- Add a whitelisted diagnostic endpoint that returns the configured Social Login Key fields without exposing secrets.
-- Add tests for setup config parsing.
+- Use `login_with_haravan.diagnostics.get_haravan_login_status` to inspect masked Social Login Key and Site Config status.
+- Keep extending tests for setup/config parsing when adding new credential aliases.
 - Add a management command/script to print the exact authorize URL Frappe will generate.
 - Add better user-facing error pages for failed Haravan callbacks.
 

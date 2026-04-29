@@ -1,9 +1,9 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: "Login With Haravan",
   description: "Tài liệu tích hợp đăng nhập Haravan cho Frappe Helpdesk",
-  srcDir: '../docs',
   lang: 'vi-VN',
   themeConfig: {
     nav: [
@@ -17,6 +17,7 @@ export default defineConfig({
         text: 'Tổng quan',
         items: [
           { text: 'Giới thiệu', link: '/' },
+          { text: 'Kế hoạch Helpdesk', link: '/frappe-helpdesk-plan' },
           { text: 'Kiến trúc hệ thống', link: '/architecture' },
           { text: 'Cơ sở dữ liệu', link: '/database' },
           { text: 'Luồng dữ liệu (Data Flow)', link: '/data-flow' },
@@ -48,4 +49,4 @@ export default defineConfig({
       }
     ]
   }
-})
+}))

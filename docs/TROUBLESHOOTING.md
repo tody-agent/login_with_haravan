@@ -28,7 +28,8 @@ Haravan từ chối yêu cầu đăng nhập trước khi Frappe có cơ hội c
 - App đã được cài đặt vào site chưa, hay mới chỉ tải về bench.
 - DocType `Social Login Key` có tên `haravan_account` đã tồn tại chưa.
 - Tuỳ chọn `Enable Social Login` đã được tích chưa.
-- `Client ID` và `Client Secret` đã có chưa (Frappe sẽ ẩn nút nếu không có secret).
+- `Client ID` đã có trong `Social Login Key` hoặc Site Config chưa.
+- Diagnostic có báo `has_client_secret: true` và `client_secret_source: site_config` chưa.
 - Base URL của Provider phải là `https://accounts.haravan.com`.
 - Thử xoá bộ nhớ đệm (clear site cache) sau khi chỉnh sửa Social Login Key.
 
@@ -66,6 +67,9 @@ Bạn cũng có thể thử chạy hàm sau trong Desk (với quyền System Man
 ```text
 login_with_haravan.diagnostics.get_haravan_login_status
 ```
+
+Diagnostic chỉ trả trạng thái masked như `has_client_secret` và `client_secret_source`;
+không trả plaintext Client Secret, API token, hoặc webhook secret.
 
 ## 6. Người dùng bị chuyển hướng về `/desk` thay vì trang Portal
 

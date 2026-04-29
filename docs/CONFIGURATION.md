@@ -14,7 +14,7 @@ Truy cập **Frappe Cloud > Site > Site Config > Add Config > Custom Key**.
 
 - **Config name**:
   ```text
-  haravan_login
+  haravan_account_login
   ```
 - **Value**:
   ```json
@@ -23,6 +23,31 @@ Truy cập **Frappe Cloud > Site > Site Config > Add Config > Custom Key**.
     "client_secret": "HARAVAN_CLIENT_SECRET"
   }
   ```
+
+`haravan_account_login` là key ưu tiên vì Frappe core đọc theo quy ước
+`{provider}_login` với provider là `haravan_account`. App vẫn hỗ trợ
+`haravan_login` và hai key rời `haravan_client_id` / `haravan_client_secret`
+để tương thích ngược, nhưng không nên dùng cho cấu hình mới.
+
+Các token/secret khác của Helpdesk cũng nên đặt ở Site Config thay vì Settings
+DocType:
+
+```text
+inside_api_key
+inside_api_secret
+gemini_api_key
+gemini_model
+openrouter_api_key
+bitrix_webhook_url
+bitrix_access_token
+bitrix_refresh_token
+bitrix_client_id
+bitrix_client_secret
+bitrix_base_url
+bitrix_domain
+```
+
+Runbook bàn giao chi tiết: `docs/SITE_CONFIG_HANDOFF.md`.
 
 ## 2. Social Login Key
 
@@ -33,7 +58,7 @@ Truy cập **Frappe Cloud > Site > Site Config > Add Config > Custom Key**.
 - **Provider Name**: `Haravan Account`
 - **Enable Social Login**: `Được tích chọn`
 - **Client ID**: `HARAVAN_CLIENT_ID`
-- **Client Secret**: `HARAVAN_CLIENT_SECRET`
+- **Client Secret**: để trống nếu `haravan_account_login` đã có `client_secret`
 - **Base URL**: `https://accounts.haravan.com`
 - **Custom Base URL**: `Được tích chọn`
 - **Authorize URL**: `/connect/authorize`
@@ -60,4 +85,4 @@ Trên ứng dụng Public / Custom bên trong Haravan Partner Dashboard, bạn p
 https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
-**Lưu ý**: Client ID và Client Secret ở bước 1 và 2 phải được lấy ra từ ứng dụng chứa Redirect URL này.
+**Lưu ý**: Client ID và Client Secret ở Site Config phải được lấy ra từ ứng dụng chứa Redirect URL này. Không lưu plaintext secret trong Settings DocType sau khi smoke test production đã pass.

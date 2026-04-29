@@ -3,6 +3,8 @@ import json
 import frappe
 from frappe import _
 
+from login_with_haravan.engines.site_config import get_haravan_login_credentials
+
 PROVIDER_DOCNAME = "haravan_account"
 PROVIDER_NAME = "Haravan Account"
 
@@ -29,11 +31,12 @@ def configure_haravan_social_login(
     client_secret: str | None = None,
     enable: int | str | bool | None = None,
 ):
-    credentials = _get_configured_credentials()
+    explicit_client_secret = client_secret
+    doc = _get_or_create_social_login_key()
+    credentials = _get_configured_credentials(doc)
     client_id = client_id or credentials.get("client_id")
     client_secret = client_secret or credentials.get("client_secret")
 
-    doc = _get_or_create_social_login_key()
     existing_secret = _get_existing_secret(doc)
     should_enable = bool(client_id and (client_secret or existing_secret)) if enable is None else bool(int(enable))
 
@@ -70,7 +73,10 @@ def configure_haravan_social_login(
 
     if client_id:
         doc.client_id = client_id
-    if client_secret:
+    client_secret_from_site_config = (
+        not explicit_client_secret and credentials.get("client_secret_source") == "site_config"
+    )
+    if client_secret and not client_secret_from_site_config:
         doc.client_secret = client_secret
 
     doc.flags.ignore_permissions = True
@@ -86,6 +92,12 @@ def configure_haravan_social_login(
             "name": doc.name,
             "enabled": bool(doc.enable_social_login),
             "redirect_url": frappe.utils.get_url(doc.redirect_url),
+            "credential_source": credentials.get("source"),
+            "client_id_source": credentials.get("client_id_source"),
+            "client_secret_source": credentials.get("client_secret_source"),
+            "client_secret_stored_in_doctype": bool(
+                client_secret and not client_secret_from_site_config
+            ),
         },
         "message": "Haravan social login key configured.",
     }
@@ -106,21 +118,7 @@ def _get_existing_secret(doc) -> str | None:
     return doc.get_password("client_secret", raise_exception=False)
 
 
-def _get_configured_credentials() -> dict:
-    # Frappe core get_oauth_keys() looks for f"{provider}_login" = "haravan_account_login"
-    # We also support the shorter "haravan_login" for backward compatibility.
-    credentials = (
-        frappe.conf.get("haravan_account_login")
-        or frappe.conf.get("haravan_login")
-        or {}
-    )
-    if isinstance(credentials, str):
-        try:
-            credentials = json.loads(credentials)
-        except json.JSONDecodeError:
-            credentials = {}
-
-    return {
-        "client_id": credentials.get("client_id") or frappe.conf.get("haravan_client_id"),
-        "client_secret": credentials.get("client_secret") or frappe.conf.get("haravan_client_secret"),
-    }
+def _get_configured_credentials(provider_doc=None) -> dict:
+    # Frappe core get_oauth_keys() looks for f"{provider}_login" = "haravan_account_login".
+    # The shorter "haravan_login" and flat keys are accepted for backward compatibility.
+    return get_haravan_login_credentials(provider_doc=provider_doc)

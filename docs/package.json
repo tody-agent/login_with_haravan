@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@vue/server-renderer": "^3.5.33",
+    "mermaid": "^11.14.0",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "vue": "^3.5.33"
   }
 }

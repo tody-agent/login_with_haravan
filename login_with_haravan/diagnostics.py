@@ -2,6 +2,10 @@ import json
 
 import frappe
 
+from login_with_haravan.engines.site_config import (
+    get_haravan_login_credentials,
+    get_helpdesk_secret_status,
+)
 from login_with_haravan.setup.install import PROVIDER_DOCNAME
 
 
@@ -18,6 +22,7 @@ def get_haravan_login_status():
         }
 
     doc = frappe.get_doc("Social Login Key", PROVIDER_DOCNAME)
+    credentials = get_haravan_login_credentials(provider_doc=doc)
     auth_url_data = doc.auth_url_data or "{}"
     if isinstance(auth_url_data, str):
         try:
@@ -42,8 +47,14 @@ def get_haravan_login_status():
             "api_endpoint": doc.api_endpoint,
             "user_id_property": doc.user_id_property,
             "sign_ups": doc.sign_ups,
-            "has_client_id": bool(doc.client_id),
-            "has_client_secret": bool(existing_secret),
+            "has_client_id": bool(credentials.get("client_id")),
+            "has_client_secret": bool(credentials.get("client_secret")),
+            "credential_source": credentials.get("source"),
+            "client_id_source": credentials.get("client_id_source"),
+            "client_secret_source": credentials.get("client_secret_source"),
+            "legacy_doctype_has_client_id": bool(doc.client_id),
+            "legacy_doctype_has_client_secret": bool(existing_secret),
+            "helpdesk_secret_status": get_helpdesk_secret_status(),
             "auth_url_data": auth_url_data,
         },
         "message": "Haravan Social Login Key status.",

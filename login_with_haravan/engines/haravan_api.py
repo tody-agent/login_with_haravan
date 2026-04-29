@@ -1,13 +1,18 @@
-import json
 import requests
 import frappe
-from datetime import datetime
 from frappe.utils import get_url
 
-def fetch_haravan_info_and_token(code: str, decoder=None) -> tuple[dict, str]:
+from login_with_haravan.engines.site_config import get_haravan_login_credentials
+
+
+def fetch_haravan_info_and_token(code: str, decoder=None, conf=None) -> tuple[dict, str]:
     provider_doc = frappe.get_doc("Social Login Key", "haravan_account")
-    client_id = provider_doc.client_id
-    client_secret = provider_doc.get_password("client_secret")
+    credentials = get_haravan_login_credentials(conf=conf, provider_doc=provider_doc)
+    client_id = credentials.get("client_id")
+    client_secret = credentials.get("client_secret")
+    if not client_id or not client_secret:
+        frappe.throw("Haravan OAuth client credentials are not configured in site config.")
+
     redirect_uri = get_url(provider_doc.redirect_url)
 
     base_url = provider_doc.base_url
@@ -56,12 +61,17 @@ def fetch_org_and_subscription_data(access_token: str) -> dict:
 
     data = {
         "plan_name": None,
-        "display_plan_name": None,
-        "shop_plan_id": None,
+        "plan_display_name": None,
+        "plan_status": None,
+        "plan_expired_at": None,
+        "province_name": None,
+        "country_name": None,
+        "shop_owner": None,
         "created_at": None,
         "email": None,
         "domain": None,
         "myharavan_domain": None,
+        "name": None,
         "subscription_status": None,
         "subscription_created_at": None,
         "subscription_expired_at": None,
@@ -80,8 +90,12 @@ def fetch_org_and_subscription_data(access_token: str) -> dict:
         if shop_resp.status_code == 200:
             shop = shop_resp.json().get("shop", {})
             data["plan_name"] = shop.get("plan_name")
-            data["display_plan_name"] = shop.get("display_plan_name")
-            data["shop_plan_id"] = shop.get("shop_plan_id")
+            data["plan_display_name"] = shop.get("plan_display_name")
+            data["plan_status"] = shop.get("plan_status")
+            data["plan_expired_at"] = shop.get("plan_expired_at")
+            data["province_name"] = shop.get("province_name")
+            data["country_name"] = shop.get("country_name")
+            data["shop_owner"] = shop.get("shop_owner")
             data["created_at"] = shop.get("created_at")
             data["email"] = shop.get("email")
             data["domain"] = shop.get("domain")
@@ -125,6 +139,9 @@ def fetch_org_and_subscription_data(access_token: str) -> dict:
                 data["subscription_created_at"] = latest.get("created_at")
                 data["subscription_expired_at"] = latest.get("expired_at")
                 data["subscription_cancelled_at"] = latest.get("cancelled_at")
+
+
+
     except Exception as e:
         frappe.log_error(f"Failed to fetch Haravan app subscriptions: {e}", "Haravan API Error")
 

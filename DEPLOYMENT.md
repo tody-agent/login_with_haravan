@@ -86,7 +86,7 @@ Social Login Provider: Custom
 Provider Name: Haravan Account
 Enable Social Login: checked
 Client ID: HARAVAN_CLIENT_ID
-Client Secret: HARAVAN_CLIENT_SECRET
+Client Secret: leave blank if haravan_account_login contains client_secret
 Base URL: https://accounts.haravan.com
 Authorize URL: /connect/authorize
 Access Token URL: /connect/token
@@ -120,7 +120,7 @@ If the button is missing, check:
 ```text
 Social Login Key > Haravan Account > Enable Social Login
 Client ID is set
-Client Secret is set
+Site Config `haravan_account_login.client_secret` is set
 Base URL is set
 ```
 
