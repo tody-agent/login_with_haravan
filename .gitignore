@@ -8,3 +8,4 @@ build/
 .DS_Store
 .env
 *.log
+site_config.json

@@ -1,0 +1,11 @@
+{
+  "name": "login_with_haravan",
+  "version": "1.0.0",
+  "description": "Frappe custom app for Haravan OAuth",
+  "scripts": {
+    "test:gate": "./test_gate.sh",
+    "test": "npm run test:gate"
+  },
+  "author": "Tody Agent",
+  "license": "MIT"
+}
