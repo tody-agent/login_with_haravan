@@ -1,92 +1,75 @@
-# Troubleshooting
+---
+title: Khắc phục sự cố (Troubleshooting)
+description: Hướng dẫn xử lý các lỗi thường gặp trong quá trình cài đặt và vận hành tích hợp Haravan.
+keywords: lỗi, khắc phục, sự cố, troubleshooting
+robots: index, follow
+---
 
-## Haravan: `invalid_request Invalid redirect_uri`
+# Khắc phục sự cố
 
-Root cause:
+## 1. Lỗi: `invalid_request Invalid redirect_uri`
 
-Haravan rejected the authorize request before Frappe callback ran.
+**Nguyên nhân:**
+Haravan từ chối yêu cầu đăng nhập trước khi Frappe có cơ hội chạy callback. Lỗi này xuất phát từ việc URL cấu hình trên Partner Dashboard không khớp.
 
-Check:
+**Cách khắc phục:**
+1. Mở `https://haravandesk.s.frappe.cloud/login`.
+2. Chuột phải vào nút `Login with Haravan Account` và chọn "Copy link address" (Sao chép địa chỉ liên kết).
+3. Giải mã tham số `redirect_uri` trong liên kết vừa sao chép.
+4. Đảm bảo nó khớp hoàn toàn với:
+   ```text
+   https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+   ```
+5. Đảm bảo bạn đã nhập chính xác URL này vào phần **Redirect URLs** trên Haravan Partner Dashboard.
 
-1. Open `https://haravandesk.s.frappe.cloud/login`.
-2. Right-click `Login with Haravan Account`.
-3. Copy link address.
-4. Decode the `redirect_uri` parameter.
-5. Confirm it exactly equals:
+## 2. Nút "Login with Haravan" không xuất hiện
 
-```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
-```
+**Cách kiểm tra:**
+- App đã được cài đặt vào site chưa, hay mới chỉ tải về bench.
+- DocType `Social Login Key` có tên `haravan_account` đã tồn tại chưa.
+- Tuỳ chọn `Enable Social Login` đã được tích chưa.
+- `Client ID` và `Client Secret` đã có chưa (Frappe sẽ ẩn nút nếu không có secret).
+- Base URL của Provider phải là `https://accounts.haravan.com`.
+- Thử xoá bộ nhớ đệm (clear site cache) sau khi chỉnh sửa Social Login Key.
 
-Then confirm this exact URL exists in Haravan Partner Dashboard.
+## 3. Frappe Cloud Báo lỗi không thể cài đặt App
 
-## Login Button Missing
+**Cách kiểm tra:**
+- `pyproject.toml` và `setup.py` phải chứa thuộc tính `name = "login_with_haravan"`.
+- Các file `hooks.py` và `patches.txt` phải nằm trong thư mục `login_with_haravan/`.
+- Không được có thư mục `tests/` ngoài cùng (chỉ ở trong `login_with_haravan/tests/`).
 
-Check:
+## 4. Không tạo được `Haravan Account Link`
 
-- App installed on the site, not only bench.
-- Social Login Key `haravan_account` exists.
-- `enable_social_login` is checked.
-- Client ID and Client Secret are present.
-- Base URL is present.
-- Clear site cache after changing Social Login Key.
-
-## Frappe Cloud Cannot Install App
-
-Check:
-
-- `pyproject.toml` has `name = "login_with_haravan"`.
-- `setup.py` has `name="login_with_haravan"`.
-- `login_with_haravan/hooks.py` exists.
-- `login_with_haravan/patches.txt` exists.
-- Root `tests/` does not exist.
-
-## No `Haravan Account Link` Created
-
-Check Frappe Error Log for:
-
+Kiểm tra Frappe Error Log xem có các cảnh báo sau:
 ```text
 Haravan social login failed
 Haravan Account Link persistence failed
 ```
 
-Possible causes:
+**Nguyên nhân có thể:**
+- Thông tin người dùng (userinfo) trả về từ Haravan không có `email` hoặc `orgid`.
+- User này đã bị vô hiệu hoá trên Frappe.
+- Tính năng tự động đăng ký (Sign ups) bị tắt trên Social Login Key.
 
-- Haravan userinfo does not include email.
-- Haravan userinfo does not include `orgid`.
-- User is disabled in Frappe.
-- Signup disabled while the user does not exist yet.
+## 5. Bị lỗi `417: Uncaught Exception` sau khi gọi callback
 
-## Callback Returns `417: Uncaught Exception`
+Kiểm tra Error Log gần nhất với tiêu đề: `Haravan social login failed`.
 
-Check the latest Frappe Error Log titled:
-
-```text
-Haravan social login failed
-```
-
-The first JSON line includes a safe `stage` value:
-
+Bên trong log sẽ cung cấp trường `stage` mô tả giai đoạn xảy ra lỗi:
 ```text
 get_info_via_oauth
 normalize_haravan_profile
 login_oauth_user
 ```
-
-Use that stage as the root-cause boundary. The log intentionally does not include
-access tokens, refresh tokens, client secrets, or authorization codes.
-
-You can also run this Desk method as Administrator/System Manager to verify
-non-secret Social Login Key configuration:
-
+Bạn cũng có thể thử chạy hàm sau trong Desk (với quyền System Manager) để kiểm tra tình trạng kết nối:
 ```text
 login_with_haravan.diagnostics.get_haravan_login_status
 ```
 
-## Login Returns To `/desk` Instead Of Previous Helpdesk Page
+## 6. Người dùng bị chuyển hướng về `/desk` thay vì trang Portal
 
-Expected flow:
-
+**Luồng hoạt động mong muốn:**
 ```text
 /helpdesk/my-tickets/new
   -> /login?redirect-to=/helpdesk/my-tickets/new
@@ -94,22 +77,6 @@ Expected flow:
   -> /helpdesk/my-tickets/new
 ```
 
-The app includes `/assets/login_with_haravan/js/haravan_login_redirect.js` on
-website pages. On `/login`, it stores the `redirect-to` target in a short-lived
-cookie and rewrites the Haravan OAuth `state.redirect_to` before the user leaves
-for Haravan. The callback also reads this cookie as a fallback, normalizes the
-target to a clear `/helpdesk/my-tickets...` route, and overrides
-`state.redirect_to` before calling Frappe's `login_oauth_user`.
+Ứng dụng có nhúng script `/assets/login_with_haravan/js/haravan_login_redirect.js` trên website. Nó lưu `redirect-to` vào cookie và ghi đè `state.redirect_to` trước khi điều hướng sang Haravan. Nếu bạn bị văng về `/desk`, có thể luồng chặn cookie bị lỗi hoặc session expired.
 
-If the OAuth state has no valid `/helpdesk/...` target, the callback falls back to
-the ticket list:
-
-```text
-/helpdesk/my-tickets
-```
-
-This prevents new Website Users from being sent to Desk-only default app routes
-such as `/desk/hd-ai-settings`, unknown Helpdesk paths, or stale absolute URLs.
-The fallback URL is built from the current Frappe site URL, so it follows a
-custom domain such as `https://haravan.help` instead of hardcoding the original
-Frappe Cloud domain.
+Trong trường hợp không tìm thấy đường dẫn hợp lệ, callback sẽ dự phòng chuyển về `/helpdesk/my-tickets`.

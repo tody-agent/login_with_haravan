@@ -86,6 +86,7 @@ def fetch_org_and_subscription_data(access_token: str) -> dict:
             data["email"] = shop.get("email")
             data["domain"] = shop.get("domain")
             data["myharavan_domain"] = shop.get("myharavan_domain")
+            data["name"] = shop.get("name")
     except Exception as e:
         frappe.log_error(f"Failed to fetch Haravan shop info: {e}", "Haravan API Error")
 
