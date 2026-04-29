@@ -4,7 +4,8 @@
   "description": "Frappe custom app for Haravan OAuth",
   "scripts": {
     "test:gate": "./test_gate.sh",
-    "test": "npm run test:gate"
+    "test": "npm run test:gate",
+    "ship": "./ship.sh"
   },
   "author": "Tody Agent",
   "license": "MIT"
