@@ -8,8 +8,8 @@ export default withMermaid(defineConfig({
   themeConfig: {
     nav: [
       { text: 'Trang chủ', link: '/' },
-      { text: 'Kiến trúc', link: '/architecture' },
-      { text: 'Cấu hình', link: '/CONFIGURATION' },
+      { text: 'Hướng dẫn', link: '/guide/configuration' },
+      { text: 'Kiến trúc', link: '/architecture/overview' },
       { text: 'API', link: '/api/oauth' }
     ],
     sidebar: [
@@ -17,18 +17,25 @@ export default withMermaid(defineConfig({
         text: 'Tổng quan',
         items: [
           { text: 'Giới thiệu', link: '/' },
-          { text: 'Kế hoạch Helpdesk', link: '/frappe-helpdesk-plan' },
-          { text: 'Kiến trúc hệ thống', link: '/architecture' },
-          { text: 'Cơ sở dữ liệu', link: '/database' },
-          { text: 'Luồng dữ liệu (Data Flow)', link: '/data-flow' },
-          { text: 'Triển khai (Deployment)', link: '/deployment' }
+          { text: 'Kế hoạch & Bàn giao', link: '/about/plan' }
         ]
       },
       {
-        text: 'Hướng dẫn',
+        text: 'Hướng dẫn (Guide)',
         items: [
-          { text: 'Cấu hình Haravan', link: '/CONFIGURATION' },
-          { text: 'Khắc phục sự cố', link: '/TROUBLESHOOTING' }
+          { text: 'Cấu hình Haravan', link: '/guide/configuration' },
+          { text: 'Khắc phục sự cố', link: '/guide/troubleshooting' },
+          { text: 'Triển khai (Deployment)', link: '/guide/deployment' }
+        ]
+      },
+      {
+        text: 'Kiến trúc & Hệ thống',
+        items: [
+          { text: 'Tổng quan Kiến trúc', link: '/architecture/overview' },
+          { text: 'Cơ sở dữ liệu', link: '/architecture/database' },
+          { text: 'Luồng dữ liệu (Data Flow)', link: '/architecture/data-flow' },
+          { text: 'Luồng OAuth (OAuth Flow)', link: '/architecture/oauth-flow' },
+          { text: 'Luồng đăng nhập (UX)', link: '/architecture/login-flow' }
         ]
       },
       {

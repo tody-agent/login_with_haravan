@@ -17,9 +17,9 @@ Tài liệu này là **Developer Handoff Manual** dành cho đội ngũ Kỹ sư
 - **Sẵn sàng để mở rộng:** Cấu trúc 7-Layer chuẩn của Frappe, dễ dàng thêm tính năng mới (như lấy thông tin Orders, Webhooks) mà không phá vỡ core của Frappe.
 
 ## 📚 Hướng dẫn dành cho Developer
-- **[Kế hoạch & Bàn giao (Roadmap)](/frappe-helpdesk-plan):** Đọc file này đầu tiên để biết cách tiếp quản source code và các ý tưởng phát triển tiếp theo.
-- **[Kiến trúc Hệ thống](/architecture):** Hiểu cách code được cấu trúc trong thư mục `login_with_haravan`.
-- **[Triển khai & Vận hành](/deployment):** Cách đưa ứng dụng lên môi trường Production (Frappe Cloud).
-- **[Luồng dữ liệu](/data-flow):** Cách JWT token được giải mã và dữ liệu chuyển vào database.
+- **[Kế hoạch & Bàn giao (Roadmap)](/about/plan):** Đọc file này đầu tiên để biết cách tiếp quản source code và các ý tưởng phát triển tiếp theo.
+- **[Kiến trúc Hệ thống](/architecture/overview):** Hiểu cách code được cấu trúc trong thư mục `login_with_haravan`.
+- **[Triển khai & Vận hành](/guide/deployment):** Cách đưa ứng dụng lên môi trường Production (Frappe Cloud).
+- **[Luồng dữ liệu](/architecture/data-flow):** Cách JWT token được giải mã và dữ liệu chuyển vào database.
 
-[Bắt đầu với Kế hoạch Bàn giao & Phát triển](/frappe-helpdesk-plan)
+[Bắt đầu với Kế hoạch Bàn giao & Phát triển](/about/plan)
