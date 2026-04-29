@@ -83,7 +83,11 @@ class HaravanIdentityTest(unittest.TestCase):
         )
         self.assertEqual(
             normalize_helpdesk_redirect("https://haravan.help/helpdesk/my-tickets/new"),
-            "https://haravan.help/helpdesk/my-tickets/new",
+            "/helpdesk/my-tickets/new",
+        )
+        self.assertEqual(
+            normalize_helpdesk_redirect("https://old-domain.example/helpdesk/my-tickets?status=Open"),
+            "/helpdesk/my-tickets?status=Open",
         )
 
     def test_rejects_missing_encoded_or_desk_redirects(self):
@@ -94,6 +98,7 @@ class HaravanIdentityTest(unittest.TestCase):
             DEFAULT_HELPDESK_REDIRECT,
         )
         self.assertEqual(normalize_helpdesk_redirect("/missing-page"), DEFAULT_HELPDESK_REDIRECT)
+        self.assertEqual(normalize_helpdesk_redirect("/helpdesk/not-a-ticket-route"), DEFAULT_HELPDESK_REDIRECT)
         self.assertEqual(
             normalize_helpdesk_redirect("https://haravan.help/notfound"),
             DEFAULT_HELPDESK_REDIRECT,

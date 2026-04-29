@@ -17,7 +17,11 @@ def normalize_helpdesk_redirect(redirect_to: str | None) -> str:
     if not path.startswith("/"):
         path = f"/{path}"
 
-    if not path.startswith("/helpdesk"):
+    if not _is_clear_ticket_route(path):
         return DEFAULT_HELPDESK_REDIRECT
 
-    return urlunparse((parsed.scheme, parsed.netloc, path, "", parsed.query, parsed.fragment))
+    return urlunparse(("", "", path, "", parsed.query, parsed.fragment))
+
+
+def _is_clear_ticket_route(path: str) -> bool:
+    return path == DEFAULT_HELPDESK_REDIRECT or path.startswith(f"{DEFAULT_HELPDESK_REDIRECT}/")
