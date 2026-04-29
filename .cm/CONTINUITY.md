@@ -61,6 +61,11 @@ Latest known version/tag:
   How to Prevent: Preserve same-origin Helpdesk redirect targets on `/login` and override Haravan callback state from a short-lived cookie before calling `login_oauth_user`.
   Scope: module:login_with_haravan.oauth.
 
+- What Failed: First-time Haravan login sent a new Website User to `/%2Fdesk%2Fhd-ai-settings` and showed `Not Permitted`.
+  Why It Failed: Missing or invalid Haravan OAuth `state.redirect_to` let Frappe fall back to the Desk default app route `/desk/hd-ai-settings`, which Website Users cannot access.
+  How to Prevent: Normalize Haravan callback redirects to valid `/helpdesk/...` targets and fall back to `/helpdesk/my-tickets/new` when the state is missing, encoded, or points to Desk.
+  Scope: module:login_with_haravan.oauth.
+
 ## Next Actions
 
 1. Confirm the Social Login Key exists and is enabled in Frappe.

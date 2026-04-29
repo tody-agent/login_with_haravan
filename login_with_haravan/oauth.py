@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urlparse
 
 import frappe
 from frappe import _
@@ -8,6 +9,7 @@ from frappe.www.login import sanitize_redirect
 
 from login_with_haravan.engines.oauth_payload import decode_json_payload
 from login_with_haravan.engines.oauth_state import decode_oauth_state, encode_oauth_state
+from login_with_haravan.engines.redirects import normalize_helpdesk_redirect
 from login_with_haravan.engines.haravan_identity import (
     build_link_fields,
     make_link_name,
@@ -39,14 +41,20 @@ def _log_oauth_failure(stage: str, exc: Exception, context: dict | None = None):
 
 
 def _with_redirect_override(state: str) -> str:
-    redirect_to = _get_redirect_override()
-    if not redirect_to:
-        return state
-
     decoded_state = decode_oauth_state(state)
-    decoded_state["redirect_to"] = redirect_to
-    _clear_redirect_cookie()
+    redirect_override = _get_redirect_override()
+    redirect_to = normalize_helpdesk_redirect(redirect_override or decoded_state.get("redirect_to"))
+    decoded_state["redirect_to"] = _absolute_redirect(redirect_to)
+    if redirect_override:
+        _clear_redirect_cookie()
     return encode_oauth_state(decoded_state)
+
+
+def _absolute_redirect(redirect_to: str) -> str:
+    parsed = urlparse(redirect_to)
+    if parsed.scheme and parsed.netloc:
+        return redirect_to
+    return frappe.utils.get_url(redirect_to)
 
 
 def _get_redirect_override() -> str | None:

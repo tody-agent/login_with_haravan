@@ -9,6 +9,10 @@ from login_with_haravan.engines.haravan_identity import (
 )
 from login_with_haravan.engines.oauth_payload import decode_json_payload
 from login_with_haravan.engines.oauth_state import decode_oauth_state, encode_oauth_state
+from login_with_haravan.engines.redirects import (
+    DEFAULT_HELPDESK_REDIRECT,
+    normalize_helpdesk_redirect,
+)
 
 
 class HaravanIdentityTest(unittest.TestCase):
@@ -71,6 +75,24 @@ class HaravanIdentityTest(unittest.TestCase):
         }
 
         self.assertEqual(decode_oauth_state(encode_oauth_state(state)), state)
+
+    def test_normalizes_helpdesk_redirects(self):
+        self.assertEqual(
+            normalize_helpdesk_redirect("/helpdesk/my-tickets/new"),
+            "/helpdesk/my-tickets/new",
+        )
+        self.assertEqual(
+            normalize_helpdesk_redirect("https://haravandesk.s.frappe.cloud/helpdesk/my-tickets/new"),
+            "https://haravandesk.s.frappe.cloud/helpdesk/my-tickets/new",
+        )
+
+    def test_rejects_missing_encoded_or_desk_redirects(self):
+        self.assertEqual(normalize_helpdesk_redirect(None), DEFAULT_HELPDESK_REDIRECT)
+        self.assertEqual(normalize_helpdesk_redirect("/desk/hd-ai-settings"), DEFAULT_HELPDESK_REDIRECT)
+        self.assertEqual(
+            normalize_helpdesk_redirect("%2Fdesk%2Fhd-ai-settings"),
+            DEFAULT_HELPDESK_REDIRECT,
+        )
 
 
 if __name__ == "__main__":
