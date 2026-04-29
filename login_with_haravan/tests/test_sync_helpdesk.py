@@ -13,12 +13,29 @@ sys.modules.setdefault("frappe", frappe_mock)
 sys.modules.setdefault("frappe.utils", frappe_mock.utils)
 
 from login_with_haravan.engines.sync_helpdesk import (
+    _make_hd_customer_name,
     auto_set_customer,
     enrich_helpdesk_data,
     update_user_profile,
     upsert_hd_customer,
     upsert_contact,
 )
+
+
+class TestMakeHdCustomerName(unittest.TestCase):
+    """Test the deterministic naming: '[OrgID] - [OrgName]'."""
+
+    def test_basic_format(self):
+        self.assertEqual(
+            _make_hd_customer_name("12345", "Minh Hải Store"),
+            "12345 - Minh Hải Store",
+        )
+
+    def test_numeric_orgid(self):
+        self.assertEqual(
+            _make_hd_customer_name("999", "Test Shop"),
+            "999 - Test Shop",
+        )
 
 
 class TestUpdateUserProfile(unittest.TestCase):
@@ -77,41 +94,60 @@ class TestUpsertHdCustomer(unittest.TestCase):
     def setUp(self):
         frappe_mock.reset_mock()
 
-    def test_creates_new_hd_customer(self):
-        """Should create HD Customer when name doesn't exist."""
+    def test_creates_new_hd_customer_with_orgid_prefix(self):
+        """Should create HD Customer with name format '[OrgID] - [OrgName]'."""
+        # No existing by orgid, no existing by name
         frappe_mock.db.get_value.return_value = None
         new_doc = MagicMock()
-        new_doc.name = "Minh Hải Store"
+        new_doc.name = "12345 - Minh Hải Store"
         frappe_mock.new_doc.return_value = new_doc
 
         result = upsert_hd_customer({
             "orgid": "12345",
             "orgname": "Minh Hải Store",
-            "orgcat": "retail",
         })
 
         frappe_mock.new_doc.assert_called_with("HD Customer")
+        self.assertEqual(new_doc.customer_name, "12345 - Minh Hải Store")
         new_doc.insert.assert_called_once()
-        self.assertEqual(result, "Minh Hải Store")
+        self.assertEqual(result, "12345 - Minh Hải Store")
 
-    def test_returns_existing_hd_customer(self):
-        """Should return existing HD Customer name when it already exists."""
+    def test_returns_existing_by_orgid_lookup(self):
+        """Should find existing HD Customer by haravan_orgid (primary lookup)."""
+        # First call (orgid lookup) → found
         frappe_mock.db.get_value.side_effect = [
-            "Minh Hải Store",  # First call: lookup by customer_name
+            "12345 - Minh Hải Store",  # lookup by haravan_orgid
         ]
         existing_doc = MagicMock()
         existing_doc.domain = "12345.myharavan.com"
         existing_doc.haravan_orgid = "12345"
-        existing_doc.haravan_orgcat = "retail"
         frappe_mock.get_doc.return_value = existing_doc
 
         result = upsert_hd_customer({
             "orgid": "12345",
             "orgname": "Minh Hải Store",
-            "orgcat": "retail",
         })
 
-        self.assertEqual(result, "Minh Hải Store")
+        self.assertEqual(result, "12345 - Minh Hải Store")
+        frappe_mock.new_doc.assert_not_called()
+
+    def test_returns_existing_by_name_fallback(self):
+        """Should find existing HD Customer by candidate_name if orgid lookup misses."""
+        frappe_mock.db.get_value.side_effect = [
+            None,  # orgid lookup → miss
+            "12345 - Minh Hải Store",  # name lookup → hit
+        ]
+        existing_doc = MagicMock()
+        existing_doc.domain = "12345.myharavan.com"
+        existing_doc.haravan_orgid = "12345"
+        frappe_mock.get_doc.return_value = existing_doc
+
+        result = upsert_hd_customer({
+            "orgid": "12345",
+            "orgname": "Minh Hải Store",
+        })
+
+        self.assertEqual(result, "12345 - Minh Hải Store")
         frappe_mock.new_doc.assert_not_called()
 
     def test_returns_none_for_missing_orgid(self):
@@ -138,36 +174,35 @@ class TestUpsertContact(unittest.TestCase):
 
         upsert_contact(
             {"email": "user@example.com", "name": "Test User", "middle_name": ""},
-            "Minh Hải Store",
+            "12345 - Minh Hải Store",
         )
 
         frappe_mock.new_doc.assert_called_with("Contact")
         contact_doc.insert.assert_called_once()
         contact_doc.append.assert_called_once_with(
             "links",
-            {"link_doctype": "HD Customer", "link_name": "Minh Hải Store"},
+            {"link_doctype": "HD Customer", "link_name": "12345 - Minh Hải Store"},
         )
 
     def test_adds_new_hd_customer_link_to_existing_contact(self):
         """Should add HD Customer link if not already present (multi-org)."""
         frappe_mock.db.get_value.return_value = "CONTACT-001"
         contact_doc = MagicMock()
-        # Existing links — has one org but not the new one
         existing_link = MagicMock()
         existing_link.link_doctype = "HD Customer"
-        existing_link.link_name = "Old Store"
+        existing_link.link_name = "11111 - Old Store"
         contact_doc.links = [existing_link]
         contact_doc.middle_name = "Existing"
         frappe_mock.get_doc.return_value = contact_doc
 
         upsert_contact(
             {"email": "user@example.com", "name": "Test User", "middle_name": ""},
-            "New Store",
+            "22222 - New Store",
         )
 
         contact_doc.append.assert_called_once_with(
             "links",
-            {"link_doctype": "HD Customer", "link_name": "New Store"},
+            {"link_doctype": "HD Customer", "link_name": "22222 - New Store"},
         )
         contact_doc.save.assert_called_once()
 
@@ -177,14 +212,14 @@ class TestUpsertContact(unittest.TestCase):
         contact_doc = MagicMock()
         existing_link = MagicMock()
         existing_link.link_doctype = "HD Customer"
-        existing_link.link_name = "Minh Hải Store"
+        existing_link.link_name = "12345 - Minh Hải Store"
         contact_doc.links = [existing_link]
         contact_doc.middle_name = "Existing"
         frappe_mock.get_doc.return_value = contact_doc
 
         upsert_contact(
             {"email": "user@example.com", "name": "Test", "middle_name": ""},
-            "Minh Hải Store",
+            "12345 - Minh Hải Store",
         )
 
         contact_doc.append.assert_not_called()
@@ -192,7 +227,7 @@ class TestUpsertContact(unittest.TestCase):
 
     def test_skips_when_no_email(self):
         """Should skip when email is missing."""
-        upsert_contact({"name": "Test"}, "Minh Hải Store")
+        upsert_contact({"name": "Test"}, "12345 - Minh Hải Store")
         frappe_mock.db.get_value.assert_not_called()
 
 
@@ -207,12 +242,12 @@ class TestAutoSetCustomer(unittest.TestCase):
         frappe_mock.session.user = "user@example.com"
 
         link_row = MagicMock()
-        link_row.hd_customer = "Minh Hải Store"
+        link_row.hd_customer = "12345 - Minh Hải Store"
         frappe_mock.get_all.return_value = [link_row]
 
         auto_set_customer(doc)
 
-        self.assertEqual(doc.customer, "Minh Hải Store")
+        self.assertEqual(doc.customer, "12345 - Minh Hải Store")
 
     def test_does_not_set_when_multiple_customers(self):
         """Should NOT set customer when user has multiple HD Customers."""
@@ -221,9 +256,9 @@ class TestAutoSetCustomer(unittest.TestCase):
         frappe_mock.session.user = "user@example.com"
 
         link1 = MagicMock()
-        link1.hd_customer = "Store A"
+        link1.hd_customer = "11111 - Store A"
         link2 = MagicMock()
-        link2.hd_customer = "Store B"
+        link2.hd_customer = "22222 - Store B"
         frappe_mock.get_all.return_value = [link1, link2]
 
         auto_set_customer(doc)
@@ -233,11 +268,11 @@ class TestAutoSetCustomer(unittest.TestCase):
     def test_preserves_existing_customer(self):
         """Should NOT override if customer is already set."""
         doc = MagicMock()
-        doc.customer = "Already Set"
+        doc.customer = "99999 - Already Set"
 
         auto_set_customer(doc)
 
-        self.assertEqual(doc.customer, "Already Set")
+        self.assertEqual(doc.customer, "99999 - Already Set")
         frappe_mock.get_all.assert_not_called()
 
     def test_skips_for_guest(self):

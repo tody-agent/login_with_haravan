@@ -52,8 +52,16 @@ def update_user_profile(user: str, normalized: dict):
         user_doc.save(ignore_permissions=True)
 
 
+def _make_hd_customer_name(org_id: str, org_name: str) -> str:
+    """Build deterministic HD Customer name: '[OrgID] - [OrgName]'."""
+    return f"{org_id} - {org_name}"
+
+
 def upsert_hd_customer(normalized: dict) -> str | None:
     """Create or update an HD Customer record for a Haravan organization.
+
+    Naming: ``{orgid} - {orgname}`` (e.g. ``12345 - Minh Hải Store``).
+    Primary lookup is by ``haravan_orgid`` custom field for deterministic matching.
 
     Returns the HD Customer name (document ID) or None if orgid/orgname missing.
     """
@@ -63,20 +71,9 @@ def upsert_hd_customer(normalized: dict) -> str | None:
     if not org_id or not org_name:
         return None
 
-    # HD Customer uses customer_name as its primary key (autoname: field:customer_name).
-    # We use orgname directly; on collision, append orgid.
-    candidate_name = org_name
+    candidate_name = _make_hd_customer_name(org_id, org_name)
 
-    existing = frappe.db.get_value(
-        "HD Customer", candidate_name, "name", cache=False
-    )
-    if existing:
-        # Already exists — update domain if missing
-        _update_hd_customer_metadata(existing, normalized)
-        return existing
-
-    # Check if a different HD Customer was already created for this orgid
-    # (handles orgname changes)
+    # Primary lookup: by haravan_orgid (handles org renames gracefully)
     existing_by_orgid = frappe.db.get_value(
         "HD Customer",
         {"haravan_orgid": org_id},
@@ -84,8 +81,16 @@ def upsert_hd_customer(normalized: dict) -> str | None:
         cache=False,
     )
     if existing_by_orgid:
-        _update_hd_customer_metadata(existing_by_orgid, normalized)
+        _update_hd_customer_metadata(existing_by_orgid, normalized, candidate_name)
         return existing_by_orgid
+
+    # Fallback: by exact candidate_name
+    existing = frappe.db.get_value(
+        "HD Customer", candidate_name, "name", cache=False
+    )
+    if existing:
+        _update_hd_customer_metadata(existing, normalized, candidate_name)
+        return existing
 
     # Create new HD Customer
     try:
@@ -93,28 +98,9 @@ def upsert_hd_customer(normalized: dict) -> str | None:
         doc.customer_name = candidate_name
         doc.domain = f"{org_id}.myharavan.com"
         doc.haravan_orgid = org_id
-        doc.haravan_orgcat = normalized.get("orgcat", "")
         doc.flags.ignore_permissions = True
         doc.insert(ignore_permissions=True)
         return doc.name
-    except frappe.DuplicateEntryError:
-        # Name collision — retry with orgid suffix
-        suffixed_name = f"{org_name} ({org_id})"
-        try:
-            doc = frappe.new_doc("HD Customer")
-            doc.customer_name = suffixed_name
-            doc.domain = f"{org_id}.myharavan.com"
-            doc.haravan_orgid = org_id
-            doc.haravan_orgcat = normalized.get("orgcat", "")
-            doc.flags.ignore_permissions = True
-            doc.insert(ignore_permissions=True)
-            return doc.name
-        except Exception as e:
-            frappe.log_error(
-                f"Failed to create HD Customer for org {org_id}: {e}",
-                "Haravan Sync Error",
-            )
-            return None
     except Exception as e:
         frappe.log_error(
             f"Failed to create HD Customer for org {org_id}: {e}",
@@ -123,14 +109,15 @@ def upsert_hd_customer(normalized: dict) -> str | None:
         return None
 
 
-def _update_hd_customer_metadata(customer_name: str, normalized: dict):
+def _update_hd_customer_metadata(
+    customer_name: str, normalized: dict, expected_name: str | None = None
+):
     """Update HD Customer fields that may have changed."""
     try:
         doc = frappe.get_doc("HD Customer", customer_name)
         changed = False
 
         org_id = normalized.get("orgid", "")
-        orgcat = normalized.get("orgcat", "")
         domain = f"{org_id}.myharavan.com" if org_id else ""
 
         if domain and not doc.domain:
@@ -138,9 +125,6 @@ def _update_hd_customer_metadata(customer_name: str, normalized: dict):
             changed = True
         if hasattr(doc, "haravan_orgid") and not doc.haravan_orgid and org_id:
             doc.haravan_orgid = org_id
-            changed = True
-        if hasattr(doc, "haravan_orgcat") and not doc.haravan_orgcat and orgcat:
-            doc.haravan_orgcat = orgcat
             changed = True
 
         if changed:
