@@ -7,6 +7,7 @@ from login_with_haravan.engines.haravan_identity import (
     make_link_name,
     normalize_haravan_profile,
 )
+from login_with_haravan.engines.oauth_payload import decode_json_payload
 
 
 class HaravanIdentityTest(unittest.TestCase):
@@ -54,6 +55,12 @@ class HaravanIdentityTest(unittest.TestCase):
 
         self.assertLessEqual(len(name), 140)
         self.assertNotIn(" ", name)
+
+    def test_decoder_accepts_bytes_and_strings(self):
+        payload = {"access_token": "token", "expires_in": 3600}
+
+        self.assertEqual(decode_json_payload(json.dumps(payload).encode("utf-8")), payload)
+        self.assertEqual(decode_json_payload(json.dumps(payload)), payload)
 
 
 if __name__ == "__main__":

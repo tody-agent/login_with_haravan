@@ -99,7 +99,13 @@ def _get_existing_secret(doc) -> str | None:
 
 
 def _get_configured_credentials() -> dict:
-    credentials = frappe.conf.get("haravan_login") or {}
+    # Frappe core get_oauth_keys() looks for f"{provider}_login" = "haravan_account_login"
+    # We also support the shorter "haravan_login" for backward compatibility.
+    credentials = (
+        frappe.conf.get("haravan_account_login")
+        or frappe.conf.get("haravan_login")
+        or {}
+    )
     if isinstance(credentials, str):
         try:
             credentials = json.loads(credentials)

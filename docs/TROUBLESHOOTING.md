@@ -56,3 +56,29 @@ Possible causes:
 - Haravan userinfo does not include `orgid`.
 - User is disabled in Frappe.
 - Signup disabled while the user does not exist yet.
+
+## Callback Returns `417: Uncaught Exception`
+
+Check the latest Frappe Error Log titled:
+
+```text
+Haravan social login failed
+```
+
+The first JSON line includes a safe `stage` value:
+
+```text
+get_info_via_oauth
+normalize_haravan_profile
+login_oauth_user
+```
+
+Use that stage as the root-cause boundary. The log intentionally does not include
+access tokens, refresh tokens, client secrets, or authorization codes.
+
+You can also run this Desk method as Administrator/System Manager to verify
+non-secret Social Login Key configuration:
+
+```text
+login_with_haravan.diagnostics.get_haravan_login_status
+```

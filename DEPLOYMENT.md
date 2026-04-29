@@ -40,10 +40,15 @@ bench --site boxme.localhost migrate
 Configure Haravan credentials:
 
 ```bash
-bench --site boxme.localhost set-config haravan_login '{"client_id":"HARAVAN_CLIENT_ID","client_secret":"HARAVAN_CLIENT_SECRET"}'
+# IMPORTANT: The config key MUST be "haravan_account_login" (matches Frappe core convention: {provider}_login)
+bench --site boxme.localhost set-config haravan_account_login '{"client_id":"HARAVAN_CLIENT_ID","client_secret":"HARAVAN_CLIENT_SECRET"}'
 bench --site boxme.localhost execute login_with_haravan.setup.install.configure_haravan_social_login
 bench --site boxme.localhost clear-cache
 ```
+
+> **Note:** The older key name `haravan_login` is also accepted for backward compatibility,
+> but `haravan_account_login` is preferred because Frappe's built-in `get_oauth_keys()`
+> looks up `f"{provider}_login"` at runtime (provider = `haravan_account`).
 
 Then open:
 
