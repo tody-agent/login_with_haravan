@@ -5,12 +5,29 @@ import types
 import unittest
 from unittest.mock import MagicMock, patch, call
 
-# --- Frappe mock setup (same pattern as existing tests) ---
-frappe_mock = MagicMock()
-frappe_mock.DuplicateEntryError = type("DuplicateEntryError", (Exception,), {})
-frappe_mock.utils.now_datetime.return_value = "2026-04-29 12:00:00"
-sys.modules.setdefault("frappe", frappe_mock)
-sys.modules.setdefault("frappe.utils", frappe_mock.utils)
+# --- Frappe mock setup (shared with other test modules) ---
+frappe_mock = sys.modules.get("frappe")
+if frappe_mock is None or not isinstance(frappe_mock, MagicMock):
+    frappe_mock = MagicMock()
+    frappe_mock.DuplicateEntryError = type("DuplicateEntryError", (Exception,), {})
+    frappe_mock.utils.now_datetime.return_value = "2026-04-29 12:00:00"
+    sys.modules["frappe"] = frappe_mock
+    sys.modules["frappe.utils"] = frappe_mock.utils
+
+
+def _reset_frappe_mock():
+    """Fully reset frappe_mock to clean state for each test."""
+    frappe_mock.reset_mock()
+    frappe_mock.db.exists.side_effect = None
+    frappe_mock.db.exists.return_value = None
+    frappe_mock.db.get_value.side_effect = None
+    frappe_mock.db.get_value.return_value = None
+    frappe_mock.new_doc.side_effect = None
+    frappe_mock.new_doc.return_value = MagicMock()
+    frappe_mock.get_doc.side_effect = None
+    frappe_mock.get_doc.return_value = MagicMock()
+    frappe_mock.get_all.side_effect = None
+    frappe_mock.get_all.return_value = []
 
 from login_with_haravan.engines.sync_helpdesk import (
     _make_hd_customer_name,
@@ -40,7 +57,7 @@ class TestMakeHdCustomerName(unittest.TestCase):
 
 class TestUpdateUserProfile(unittest.TestCase):
     def setUp(self):
-        frappe_mock.reset_mock()
+        _reset_frappe_mock()
 
     def test_updates_middle_name_when_empty(self):
         """Should set middle_name on User if currently empty."""
@@ -92,7 +109,7 @@ class TestUpdateUserProfile(unittest.TestCase):
 
 class TestUpsertHdCustomer(unittest.TestCase):
     def setUp(self):
-        frappe_mock.reset_mock()
+        _reset_frappe_mock()
 
     def test_creates_new_hd_customer_with_orgid_prefix(self):
         """Should create HD Customer with name format '[OrgID] - [OrgName]'."""
@@ -163,7 +180,7 @@ class TestUpsertHdCustomer(unittest.TestCase):
 
 class TestUpsertContact(unittest.TestCase):
     def setUp(self):
-        frappe_mock.reset_mock()
+        _reset_frappe_mock()
 
     def test_creates_contact_with_hd_customer_link(self):
         """Should create Contact and link to HD Customer."""
@@ -233,7 +250,7 @@ class TestUpsertContact(unittest.TestCase):
 
 class TestAutoSetCustomer(unittest.TestCase):
     def setUp(self):
-        frappe_mock.reset_mock()
+        _reset_frappe_mock()
 
     def test_auto_sets_single_customer(self):
         """Should auto-set customer when user has exactly 1 HD Customer."""

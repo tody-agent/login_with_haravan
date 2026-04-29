@@ -7,19 +7,23 @@
  *
  * This script runs on every page load but only activates on the
  * helpdesk ticket creation page (/helpdesk/my-tickets/new).
+ *
+ * Architecture:
+ *   1. Fetches user's linked orgs via whitelisted API
+ *   2. Injects a dropdown selector into the ticket form DOM
+ *   3. Intercepts XMLHttpRequest to inject the selected customer
+ *      into HD Ticket creation payloads (frappe.client.insert)
  */
 (function () {
   "use strict";
 
   var SELECTOR_ID = "haravan-org-selector";
-  var API_METHOD =
-    "login_with_haravan.oauth.get_user_haravan_orgs";
-  var POLL_INTERVAL = 500; // ms
-  var MAX_POLLS = 40; // max 20 seconds of polling
+  var API_METHOD = "login_with_haravan.oauth.get_user_haravan_orgs";
+  var POLL_INTERVAL = 500;
+  var MAX_POLLS = 40;
 
-  /**
-   * Only run on helpdesk ticket creation pages.
-   */
+  /* ── Activation guard ───────────────────────────────────── */
+
   function shouldActivate() {
     var path = window.location.pathname;
     return (
@@ -28,9 +32,8 @@
     );
   }
 
-  /**
-   * Fetch the user's Haravan orgs via the whitelisted API.
-   */
+  /* ── API call ───────────────────────────────────────────── */
+
   function fetchOrgs(callback) {
     if (typeof frappe === "undefined" || !frappe.call) {
       return callback([]);
@@ -51,21 +54,101 @@
     });
   }
 
-  /**
-   * Build and inject the org selector dropdown into the ticket form.
-   * Targets the Helpdesk Vue form — polls until the form container is found.
-   */
+  /* ── XHR interceptor ────────────────────────────────────── */
+  // The Helpdesk Vue SPA creates tickets via frappe.call which uses
+  // XMLHttpRequest under the hood. We intercept send() to inject the
+  // selected customer into the doc payload for frappe.client.insert.
+
+  var _xhrInterceptInstalled = false;
+
+  function installXhrInterceptor() {
+    if (_xhrInterceptInstalled) return;
+    _xhrInterceptInstalled = true;
+
+    var origOpen = XMLHttpRequest.prototype.open;
+    var origSend = XMLHttpRequest.prototype.send;
+
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this._hrvUrl = url;
+      this._hrvMethod = method;
+      return origOpen.apply(this, arguments);
+    };
+
+    XMLHttpRequest.prototype.send = function (body) {
+      var customer = window.__haravan_selected_customer;
+      if (
+        customer &&
+        this._hrvMethod === "POST" &&
+        typeof this._hrvUrl === "string" &&
+        typeof body === "string"
+      ) {
+        try {
+          // frappe.call sends form-encoded OR JSON
+          // Check if this is a frappe.client.insert for HD Ticket
+          var isInsert =
+            this._hrvUrl.indexOf("frappe.client.insert") !== -1 ||
+            body.indexOf("frappe.client.insert") !== -1;
+
+          if (isInsert && body.indexOf("HD Ticket") !== -1) {
+            // Try to parse as form-encoded (frappe.call default)
+            if (body.indexOf("doc=") !== -1) {
+              var parts = body.split("&");
+              var newParts = [];
+              var docReplaced = false;
+
+              parts.forEach(function (part) {
+                if (part.indexOf("doc=") === 0 && !docReplaced) {
+                  var encoded = part.substring(4);
+                  var decoded = decodeURIComponent(encoded);
+                  var docObj = JSON.parse(decoded);
+                  if (docObj.doctype === "HD Ticket" && !docObj.customer) {
+                    docObj.customer = customer;
+                  }
+                  newParts.push("doc=" + encodeURIComponent(JSON.stringify(docObj)));
+                  docReplaced = true;
+                } else {
+                  newParts.push(part);
+                }
+              });
+
+              if (docReplaced) {
+                body = newParts.join("&");
+              }
+            }
+            // Try JSON body
+            else {
+              var jsonBody = JSON.parse(body);
+              if (jsonBody.doc && jsonBody.doc.doctype === "HD Ticket" && !jsonBody.doc.customer) {
+                jsonBody.doc.customer = customer;
+                body = JSON.stringify(jsonBody);
+              }
+            }
+          }
+        } catch (e) {
+          // Parsing failed — send original body, don't block the request
+        }
+      }
+      return origSend.call(this, body);
+    };
+  }
+
+  /* ── DOM injection ──────────────────────────────────────── */
+
   function injectSelector(orgs) {
-    if (orgs.length <= 1) {
-      // 0 or 1 org: no selector needed.
-      // If exactly 1, auto-set will be handled by the backend hook.
+    if (orgs.length === 0) return;
+
+    // Auto-select if only 1 org (backend handles it, but set for UX)
+    if (orgs.length === 1) {
+      window.__haravan_selected_customer = orgs[0].customer;
+      installXhrInterceptor();
       return;
     }
 
     // Don't inject twice
-    if (document.getElementById(SELECTOR_ID)) {
-      return;
-    }
+    if (document.getElementById(SELECTOR_ID)) return;
+
+    // Install XHR interceptor for multi-org
+    installXhrInterceptor();
 
     var pollCount = 0;
 
@@ -73,11 +156,7 @@
       pollCount++;
       if (pollCount > MAX_POLLS) return;
 
-      // Look for the ticket form container.
-      // Helpdesk uses a Vue SPA — the form might render as:
-      //   - A <form> element
-      //   - A div with class containing "ticket" or "new-ticket"
-      //   - The main content area of the helpdesk portal
+      // Look for the ticket form container in the Vue SPA
       var formContainer =
         document.querySelector("form") ||
         document.querySelector("[class*='new-ticket']") ||
@@ -115,34 +194,26 @@
         "color: var(--text-color, #333); cursor: pointer; " +
         "appearance: auto;";
 
-      // Add placeholder option
+      // Placeholder option
       var placeholder = document.createElement("option");
       placeholder.value = "";
-      placeholder.textContent = "— Chọn cửa hàng —";
+      placeholder.textContent = "\u2014 Ch\u1ECDn c\u1EEDa h\u00E0ng \u2014";
       placeholder.disabled = true;
       placeholder.selected = true;
       select.appendChild(placeholder);
 
-      // Add org options
+      // Add org options — display as "[OrgID] - [OrgName]" (matches HD Customer name)
       orgs.forEach(function (org) {
         var opt = document.createElement("option");
         opt.value = org.customer;
-        opt.textContent = org.orgname || org.customer;
+        opt.textContent = org.customer || (org.orgid + " - " + org.orgname);
         opt.setAttribute("data-orgid", org.orgid || "");
         select.appendChild(opt);
       });
 
-      // When user selects an org, store it for the form submission
+      // On selection change
       select.addEventListener("change", function () {
-        var selectedCustomer = this.value;
-        // Store in a global for the doc_events fallback to pick up
-        window.__haravan_selected_customer = selectedCustomer;
-
-        // Try to set the customer field directly if it exists in the form
-        // (This works if there's a hidden "customer" field in the Frappe form)
-        if (typeof cur_frm !== "undefined" && cur_frm) {
-          cur_frm.set_value("customer", selectedCustomer);
-        }
+        window.__haravan_selected_customer = this.value;
       });
 
       wrapper.appendChild(label);
@@ -155,19 +226,20 @@
     tryInject();
   }
 
-  /**
-   * Main entry point — wait for DOM and check if we should activate.
-   */
+  /* ── Initialization ─────────────────────────────────────── */
+
   function init() {
     if (!shouldActivate()) return;
 
-    // Wait for frappe to be ready
+    // Reset selection on navigation
+    window.__haravan_selected_customer = null;
+
     if (typeof frappe !== "undefined" && frappe.ready) {
       frappe.ready(function () {
         fetchOrgs(injectSelector);
       });
     } else {
-      // Fallback: poll for frappe availability
+      // Poll for frappe availability
       var checkCount = 0;
       var checkInterval = setInterval(function () {
         checkCount++;
@@ -196,7 +268,6 @@
     var currentPath = window.location.pathname;
     if (currentPath !== lastPath) {
       lastPath = currentPath;
-      // Remove old selector
       var old = document.getElementById(SELECTOR_ID);
       if (old) old.remove();
       init();
