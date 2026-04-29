@@ -99,7 +99,7 @@ find . -type d -name __pycache__ -prune -exec rm -rf {} +
 Read this file before continuing production setup:
 
 ```text
-docs/NEXT_STEPS_FOR_AGENT.md
+openspec/AGENT_NEXT_STEPS.md
 ```
 
 ## Agent Workflow (Solo Vibe Coding)

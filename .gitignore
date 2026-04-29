@@ -11,3 +11,5 @@ build/
 site_config.json
 docs/node_modules/
 docs/.vitepress/cache/
+docs/.vitepress/dist/
+.wrangler/

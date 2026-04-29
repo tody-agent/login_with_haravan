@@ -48,7 +48,7 @@ bitrix_timeout_seconds
 bitrix_refresh_ttl_minutes
 ```
 
-Runbook bàn giao chi tiết: `docs/SITE_CONFIG_HANDOFF.md`.
+For initial setup, see `openspec/SITE_CONFIG.md`. This document serves as the ongoing operation guide.
 
 ## 2. Social Login Key
 

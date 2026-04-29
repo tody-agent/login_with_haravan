@@ -19,7 +19,7 @@ Tài liệu này là **Developer Handoff Manual** dành cho đội ngũ Kỹ sư
 ## 📚 Hướng dẫn dành cho Developer
 - **[Kế hoạch & Bàn giao (Roadmap)](/frappe-helpdesk-plan):** Đọc file này đầu tiên để biết cách tiếp quản source code và các ý tưởng phát triển tiếp theo.
 - **[Kiến trúc Hệ thống](/architecture):** Hiểu cách code được cấu trúc trong thư mục `login_with_haravan`.
-- **[SOP & Cài đặt](/sop/installation):** Cách cài ứng dụng vào môi trường local (bench) để lập trình.
+- **[Triển khai & Vận hành](/deployment):** Cách đưa ứng dụng lên môi trường Production (Frappe Cloud).
 - **[Luồng dữ liệu](/data-flow):** Cách JWT token được giải mã và dữ liệu chuyển vào database.
 
 [Bắt đầu với Kế hoạch Bàn giao & Phát triển](/frappe-helpdesk-plan)

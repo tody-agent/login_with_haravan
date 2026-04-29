@@ -9,7 +9,7 @@ export default withMermaid(defineConfig({
     nav: [
       { text: 'Trang chủ', link: '/' },
       { text: 'Kiến trúc', link: '/architecture' },
-      { text: 'SOPs', link: '/sop/installation' },
+      { text: 'Cấu hình', link: '/CONFIGURATION' },
       { text: 'API', link: '/api/oauth' }
     ],
     sidebar: [
@@ -25,20 +25,10 @@ export default withMermaid(defineConfig({
         ]
       },
       {
-        text: 'SOP & Hướng dẫn',
+        text: 'Hướng dẫn',
         items: [
-          { text: 'Cài đặt', link: '/sop/installation' },
-          { text: 'Bàn giao vận hành Haravan', link: '/sop/haravan-helpdesk-handoff' },
           { text: 'Cấu hình Haravan', link: '/CONFIGURATION' },
           { text: 'Khắc phục sự cố', link: '/TROUBLESHOOTING' }
-        ]
-      },
-      {
-        text: 'Nghiên cứu UX',
-        items: [
-          { text: 'Personas', link: '/personas/buyer-user' },
-          { text: 'Jobs To Be Done', link: '/jtbd/main' },
-          { text: 'User Flows', link: '/flows/login-flow' }
         ]
       },
       {
