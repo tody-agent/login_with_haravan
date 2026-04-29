@@ -45,7 +45,7 @@ cd /Volumes/Data/Frappe/frappe-bench
 ln -sfn /Volumes/Data/Haravan/login_with_haravan apps/login_with_haravan
 ./env/bin/pip install -e apps/login_with_haravan
 bench --site boxme.localhost install-app login_with_haravan
-bench --site boxme.localhost set-config haravan_login '{"client_id":"HARAVAN_CLIENT_ID","client_secret":"HARAVAN_CLIENT_SECRET"}'
+bench --site boxme.localhost set-config haravan_account_login '{"client_id":"HARAVAN_CLIENT_ID","client_secret":"HARAVAN_CLIENT_SECRET"}'
 bench --site boxme.localhost execute login_with_haravan.setup.install.configure_haravan_social_login
 bench --site boxme.localhost clear-cache
 ```
@@ -67,6 +67,7 @@ docs/AGENT_HANDOFF.md
 docs/NEXT_STEPS_FOR_AGENT.md
 docs/OAUTH_FLOW.md
 docs/CONFIGURATION.md
+docs/SITE_CONFIG_HANDOFF.md
 docs/TROUBLESHOOTING.md
 ```
 

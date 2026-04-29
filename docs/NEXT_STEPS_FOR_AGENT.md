@@ -60,7 +60,7 @@ Frappe Cloud > Site > Site Config > Add Config > Custom Key:
 Config Name:
 
 ```text
-haravan_login
+haravan_account_login
 ```
 
 Value:
@@ -73,6 +73,9 @@ Value:
 ```
 
 The values must come from the Haravan Partner App that contains the callback URL above.
+The older `haravan_login` key and flat `haravan_client_id` / `haravan_client_secret`
+keys remain supported only for backward compatibility.
+For the full Site Config handoff and non-OAuth secret list, read `docs/SITE_CONFIG_HANDOFF.md`.
 
 ## Step 1: Configure Haravan Partner App
 
@@ -137,7 +140,7 @@ In Frappe Cloud:
 5. Use Config Name:
 
 ```text
-haravan_login
+haravan_account_login
 ```
 
 6. Use Value:
@@ -154,7 +157,7 @@ haravan_login
 Agent action:
 
 - Confirm JSON is valid.
-- Confirm the key is exactly `haravan_login`, not `haravan_client_id`.
+- Confirm the key is exactly `haravan_account_login` for new setup.
 - If Frappe Cloud UI cannot store JSON objects, use two Custom Keys instead:
 
 ```text
@@ -162,7 +165,7 @@ haravan_client_id = HARAVAN_CLIENT_ID
 haravan_client_secret = HARAVAN_CLIENT_SECRET
 ```
 
-The app supports both formats.
+The app supports both formats, but the grouped `haravan_account_login` key is preferred.
 
 ## Step 4: Create Or Update Social Login Key
 
@@ -188,7 +191,7 @@ Social Login Provider: Custom
 Provider Name: Haravan Account
 Enable Social Login: checked
 Client ID: HARAVAN_CLIENT_ID
-Client Secret: HARAVAN_CLIENT_SECRET
+Client Secret: leave blank if `haravan_account_login` contains `client_secret`
 Base URL: https://accounts.haravan.com
 Custom Base URL: checked
 Authorize URL: /connect/authorize
@@ -215,7 +218,7 @@ Agent action:
 
 - Confirm the Social Login Key document name is likely `haravan_account`. Frappe auto-scrubs `Provider Name`.
 - Confirm `enable_social_login` is checked.
-- Confirm client secret is saved. Frappe login page hides providers without a usable secret.
+- Confirm the diagnostic reports `has_client_secret: true` and `client_secret_source: site_config`.
 
 ## Step 5: Validate Generated Login URL
 

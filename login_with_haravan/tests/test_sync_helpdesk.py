@@ -207,6 +207,77 @@ class TestUpsertHdCustomer(unittest.TestCase):
         self.assertEqual(doc.custom_haravan_orgid, 99999)
         self.assertIsInstance(doc.custom_haravan_orgid, int)
 
+    def test_creates_hd_customer_with_shop_plan_fields(self):
+        """Should set all shop plan fields from haravan_org_data on creation."""
+        frappe_mock.db.get_value.side_effect = [None, None]
+        doc = MagicMock()
+        doc.name = "12345 - Test Shop"
+        frappe_mock.new_doc.return_value = doc
+
+        normalized = {
+            "orgid": "12345",
+            "orgname": "Test Shop",
+            "haravan_org_data": {
+                "plan_display_name": "OMNICHANNEL",
+                "plan_status": "active",
+                "plan_expired_at": "2027-04-20T16:23:51Z",
+                "province_name": "Hồ Chí Minh",
+                "country_name": "Vietnam",
+            },
+        }
+        result = upsert_hd_customer(normalized)
+
+        self.assertEqual(doc.custom_shopplan_name, "OMNICHANNEL")
+        self.assertEqual(doc.custom_shopplan_status, "active")
+        self.assertEqual(doc.custom_province_name, "Hồ Chí Minh")
+        self.assertEqual(doc.custom_country, "Vietnam")
+        self.assertIsNotNone(doc.custom_expired_date)
+        doc.insert.assert_called_once()
+
+    def test_creates_hd_customer_without_org_data(self):
+        """Should create HD Customer gracefully when haravan_org_data is empty."""
+        frappe_mock.db.get_value.side_effect = [None, None]
+        doc = MagicMock()
+        doc.name = "12345 - Test Shop"
+        frappe_mock.new_doc.return_value = doc
+
+        result = upsert_hd_customer({"orgid": "12345", "orgname": "Test Shop"})
+
+        doc.insert.assert_called_once()
+        self.assertEqual(result, "12345 - Test Shop")
+
+    def test_updates_plan_fields_on_existing_customer(self):
+        """Should update plan fields when plan changes (e.g. upgrade)."""
+        frappe_mock.db.get_value.return_value = "12345 - Test Shop"
+        existing_doc = MagicMock()
+        existing_doc.domain = "12345.myharavan.com"
+        existing_doc.custom_haravan_orgid = 12345
+        existing_doc.custom_myharavan = "12345.myharavan.com"
+        existing_doc.custom_shopplan_name = "STANDARD"
+        existing_doc.custom_shopplan_status = "active"
+        existing_doc.custom_expired_date = "2026-01-01 00:00:00"
+        existing_doc.custom_province_name = "Hồ Chí Minh"
+        existing_doc.custom_country = "Vietnam"
+        existing_doc.custom_first_paid_date = "2025-01-01 00:00:00"
+        frappe_mock.get_doc.return_value = existing_doc
+
+        normalized = {
+            "orgid": "12345",
+            "orgname": "Test Shop",
+            "haravan_org_data": {
+                "plan_display_name": "OMNICHANNEL",
+                "plan_status": "active",
+                "plan_expired_at": "2028-01-01T00:00:00Z",
+                "province_name": "Hồ Chí Minh",
+                "country_name": "Vietnam",
+            },
+        }
+        upsert_hd_customer(normalized)
+
+        # Plan name should be updated (upgrade)
+        self.assertEqual(existing_doc.custom_shopplan_name, "OMNICHANNEL")
+        existing_doc.save.assert_called_once()
+
 
 class TestUpsertContact(unittest.TestCase):
     def setUp(self):

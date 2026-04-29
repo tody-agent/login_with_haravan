@@ -9,3 +9,5 @@ build/
 .env
 *.log
 site_config.json
+docs/node_modules/
+docs/.vitepress/cache/

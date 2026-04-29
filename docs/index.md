@@ -5,21 +5,21 @@ keywords: haravan, frappe, helpdesk, oauth, login
 robots: index, follow
 ---
 
-# 🚀 Login With Haravan (Frappe Helpdesk)
+# 🚀 Login With Haravan (Frappe Integration)
 
-:::info Tóm tắt
-Đây là hệ thống tài liệu đầy đủ cho ứng dụng **Login With Haravan**, một Custom App của Frappe giúp tích hợp tính năng đăng nhập một chạm (SSO) từ Haravan vào Frappe Helpdesk.
+:::info Đối tượng & Mục tiêu
+Tài liệu này là **Developer Handoff Manual** dành cho đội ngũ Kỹ sư phần mềm (đặc biệt là Haravan Developers). Mục tiêu là giúp các nhà phát triển nắm vững kiến trúc, cách vận hành và định hướng mở rộng (improvement) ứng dụng Frappe tích hợp với Haravan.
 :::
 
-## 🌟 Tính năng chính
+## 🌟 Vai trò của ứng dụng
 - **Đăng nhập OAuth 2.0:** Xác thực an toàn qua hệ thống `accounts.haravan.com`.
-- **Đồng bộ Dữ liệu Khách hàng:** Tự động tạo và cập nhật `HD Customer` và `Contact` từ dữ liệu tổ chức trên Haravan.
-- **Hỗ trợ Multi-org:** Cho phép người dùng thuộc nhiều tổ chức (org) chọn đúng tổ chức khi tạo ticket.
-- **Auto-assignment:** Tự động gán khách hàng nếu người dùng chỉ thuộc 1 tổ chức.
+- **Đồng bộ Profile:** Lấy thông tin tổ chức và tạo `HD Customer` trong Frappe Helpdesk.
+- **Sẵn sàng để mở rộng:** Cấu trúc 7-Layer chuẩn của Frappe, dễ dàng thêm tính năng mới (như lấy thông tin Orders, Webhooks) mà không phá vỡ core của Frappe.
 
-## 📚 Cấu trúc Tài liệu
-- **Kiến trúc & Kỹ thuật:** Xem `Kiến trúc hệ thống`, `Luồng dữ liệu`, `Cơ sở dữ liệu`.
-- **Hướng dẫn Vận hành (SOP):** Xem `Cài đặt` và `Khắc phục sự cố`.
-- **API Reference:** Chi tiết các endpoint và hàm xử lý cốt lõi.
+## 📚 Hướng dẫn dành cho Developer
+- **[Kế hoạch & Bàn giao (Roadmap)](/frappe-helpdesk-plan):** Đọc file này đầu tiên để biết cách tiếp quản source code và các ý tưởng phát triển tiếp theo.
+- **[Kiến trúc Hệ thống](/architecture):** Hiểu cách code được cấu trúc trong thư mục `login_with_haravan`.
+- **[SOP & Cài đặt](/sop/installation):** Cách cài ứng dụng vào môi trường local (bench) để lập trình.
+- **[Luồng dữ liệu](/data-flow):** Cách JWT token được giải mã và dữ liệu chuyển vào database.
 
-[Bắt đầu với Kiến trúc Hệ thống](/architecture)
+[Bắt đầu với Kế hoạch Bàn giao & Phát triển](/frappe-helpdesk-plan)
