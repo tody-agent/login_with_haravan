@@ -6,67 +6,21 @@ from frappe import _
 PROVIDER_DOCNAME = "haravan_account"
 PROVIDER_NAME = "Haravan Account"
 
-# Custom fields to inject into HD Customer (belongs to helpdesk app)
-HD_CUSTOMER_CUSTOM_FIELDS = [
-    {
-        "fieldname": "haravan_orgid",
-        "fieldtype": "Data",
-        "label": "Haravan Org ID",
-        "insert_after": "domain",
-        "unique": 1,
-        "in_list_view": 1,
-        "translatable": 0,
-    },
-]
+# HD Customer custom fields are managed manually via Frappe Customize Form.
+# Production fields: custom_haravan_orgid (Int), custom_myharavan (Data),
+# custom_shopplan_name (Data), custom_customer_segment (Select),
+# custom_hsi_segment (Select), custom_first_paid_date (Datetime)
 
 
 def after_install():
     configure_haravan_social_login()
-    ensure_hd_customer_custom_fields()
 
 
 def after_migrate():
     configure_haravan_social_login()
-    ensure_hd_customer_custom_fields()
 
 
-def ensure_hd_customer_custom_fields():
-    """Create custom fields on HD Customer if they don't exist.
 
-    HD Customer belongs to the helpdesk app. We add haravan_orgid as a
-    Custom Field so our sync engine can look up customers by org ID.
-    """
-    if not frappe.db.exists("DocType", "HD Customer"):
-        return  # Helpdesk not installed yet
-
-    for field_def in HD_CUSTOMER_CUSTOM_FIELDS:
-        fieldname = field_def["fieldname"]
-        cf_name = f"HD Customer-{fieldname}"
-
-        if frappe.db.exists("Custom Field", cf_name):
-            continue
-
-        try:
-            cf = frappe.new_doc("Custom Field")
-            cf.dt = "HD Customer"
-            cf.module = "Login With Haravan"
-            for key, value in field_def.items():
-                setattr(cf, key, value)
-            cf.flags.ignore_permissions = True
-            cf.insert(ignore_permissions=True)
-            frappe.logger("haravan").info(
-                f"Created Custom Field '{fieldname}' on HD Customer"
-            )
-        except frappe.DuplicateEntryError:
-            pass  # Already exists — race condition safe
-        except Exception as e:
-            frappe.log_error(
-                f"Failed to create Custom Field '{fieldname}' on HD Customer: {e}",
-                "Haravan Install Error",
-            )
-
-    frappe.db.commit()
-    frappe.clear_cache(doctype="HD Customer")
 
 
 @frappe.whitelist()

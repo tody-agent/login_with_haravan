@@ -2,6 +2,16 @@
 
 Handles upsert of HD Customer, Contact, and User profile enrichment
 after successful Haravan OAuth login.
+
+HD Customer field mapping (production):
+  - customer_name (str): "[OrgID] - [OrgName]"
+  - custom_haravan_orgid (Int): Haravan organization ID
+  - domain (str): e.g. "shopname.myharavan.com"
+  - custom_myharavan (str): MyHaravan subdomain
+  - custom_shopplan_name (str): e.g. "Scale", "Growth"
+  - custom_customer_segment (Select): "SME" | "Medium" | "Enterprise"
+  - custom_hsi_segment (Select): "0" | "1" | "100" | "200" | "500" | "500+"
+  - custom_first_paid_date (Datetime): first paid timestamp
 """
 
 import frappe
@@ -52,16 +62,26 @@ def update_user_profile(user: str, normalized: dict):
         user_doc.save(ignore_permissions=True)
 
 
-def _make_hd_customer_name(org_id: str, org_name: str) -> str:
+def _make_hd_customer_name(org_id, org_name: str) -> str:
     """Build deterministic HD Customer name: '[OrgID] - [OrgName]'."""
     return f"{org_id} - {org_name}"
+
+
+def _safe_int(value) -> int | None:
+    """Convert value to int safely, return None on failure."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
 
 
 def upsert_hd_customer(normalized: dict) -> str | None:
     """Create or update an HD Customer record for a Haravan organization.
 
     Naming: ``{orgid} - {orgname}`` (e.g. ``12345 - Minh Hải Store``).
-    Primary lookup is by ``haravan_orgid`` custom field for deterministic matching.
+    Primary lookup is by ``custom_haravan_orgid`` (Int field) for deterministic matching.
 
     Returns the HD Customer name (document ID) or None if orgid/orgname missing.
     """
@@ -71,18 +91,20 @@ def upsert_hd_customer(normalized: dict) -> str | None:
     if not org_id or not org_name:
         return None
 
+    org_id_int = _safe_int(org_id)
     candidate_name = _make_hd_customer_name(org_id, org_name)
 
-    # Primary lookup: by haravan_orgid (handles org renames gracefully)
-    existing_by_orgid = frappe.db.get_value(
-        "HD Customer",
-        {"haravan_orgid": org_id},
-        "name",
-        cache=False,
-    )
-    if existing_by_orgid:
-        _update_hd_customer_metadata(existing_by_orgid, normalized, candidate_name)
-        return existing_by_orgid
+    # Primary lookup: by custom_haravan_orgid (handles org renames gracefully)
+    if org_id_int is not None:
+        existing_by_orgid = frappe.db.get_value(
+            "HD Customer",
+            {"custom_haravan_orgid": org_id_int},
+            "name",
+            cache=False,
+        )
+        if existing_by_orgid:
+            _update_hd_customer_metadata(existing_by_orgid, normalized, candidate_name)
+            return existing_by_orgid
 
     # Fallback: by exact candidate_name
     existing = frappe.db.get_value(
@@ -97,7 +119,8 @@ def upsert_hd_customer(normalized: dict) -> str | None:
         doc = frappe.new_doc("HD Customer")
         doc.customer_name = candidate_name
         doc.domain = f"{org_id}.myharavan.com"
-        doc.haravan_orgid = org_id
+        doc.custom_haravan_orgid = org_id_int
+        doc.custom_myharavan = f"{org_id}.myharavan.com"
         doc.flags.ignore_permissions = True
         doc.insert(ignore_permissions=True)
         return doc.name
@@ -118,13 +141,19 @@ def _update_hd_customer_metadata(
         changed = False
 
         org_id = normalized.get("orgid", "")
+        org_id_int = _safe_int(org_id)
         domain = f"{org_id}.myharavan.com" if org_id else ""
 
         if domain and not doc.domain:
             doc.domain = domain
             changed = True
-        if hasattr(doc, "haravan_orgid") and not doc.haravan_orgid and org_id:
-            doc.haravan_orgid = org_id
+
+        if org_id_int is not None and not doc.custom_haravan_orgid:
+            doc.custom_haravan_orgid = org_id_int
+            changed = True
+
+        if domain and not doc.custom_myharavan:
+            doc.custom_myharavan = domain
             changed = True
 
         if changed:
