@@ -33,8 +33,6 @@ Các token/secret khác của Helpdesk cũng nên đặt ở Site Config thay v�
 DocType:
 
 ```text
-inside_api_key
-inside_api_secret
 gemini_api_key
 gemini_model
 openrouter_api_key
@@ -45,6 +43,9 @@ bitrix_client_id
 bitrix_client_secret
 bitrix_base_url
 bitrix_domain
+bitrix_enabled
+bitrix_timeout_seconds
+bitrix_refresh_ttl_minutes
 ```
 
 Runbook bàn giao chi tiết: `docs/SITE_CONFIG_HANDOFF.md`.

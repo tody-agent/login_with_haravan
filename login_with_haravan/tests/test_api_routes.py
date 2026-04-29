@@ -37,3 +37,21 @@ class TestApiRoutes(unittest.TestCase):
                         if isinstance(dec.func, ast.Attribute) and getattr(dec.func.value, "id", "") == "frappe" and dec.func.attr == "whitelist":
                             decorators.append("frappe.whitelist")
                 self.assertIn("frappe.whitelist", decorators, f"{func.name} is missing @frappe.whitelist decorator")
+
+    def test_oauth_callback_does_not_fetch_haravan_shop_data(self):
+        """Haravan OAuth is login-only; customer profile enrichment is Bitrix on-demand."""
+        oauth_path = os.path.join(os.path.dirname(__file__), "../oauth.py")
+        with open(oauth_path, "r", encoding="utf-8") as f:
+            source = f.read()
+
+        self.assertNotIn("fetch_org_and_subscription_data", source)
+        self.assertNotIn("haravan_org_data", source)
+
+    def test_haravan_social_login_scope_is_login_only(self):
+        """Commerce scopes must not be requested for the login-only OAuth provider."""
+        install_path = os.path.join(os.path.dirname(__file__), "../setup/install.py")
+        with open(install_path, "r", encoding="utf-8") as f:
+            source = f.read()
+
+        self.assertIn("openid profile email org userinfo", source)
+        self.assertNotIn("com.read_shop", source)

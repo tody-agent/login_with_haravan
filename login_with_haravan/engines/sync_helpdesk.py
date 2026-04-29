@@ -1,21 +1,13 @@
 """Sync Haravan identity data into Frappe Helpdesk entities.
 
-Handles upsert of HD Customer, Contact, and User profile enrichment
-after successful Haravan OAuth login.
+Handles upsert of HD Customer, Contact, and User profile links after
+successful Haravan OAuth login.
 
 HD Customer field mapping (production):
   - customer_name (str): "[OrgID] - [OrgName]"
   - custom_haravan_orgid (Int): Haravan organization ID
   - domain (str): e.g. "shopname.myharavan.com"
   - custom_myharavan (str): MyHaravan subdomain
-  - custom_shopplan_name (str): e.g. "AFFILIATE", "OMNICHANNEL"
-  - custom_shopplan_status (str): e.g. "active", "expired"
-  - custom_province_name (str): e.g. "Hồ Chí Minh"
-  - custom_country (str): e.g. "Vietnam"
-  - custom_expired_date (Datetime): plan expiry date
-  - custom_customer_segment (Select): "SME" | "Medium" | "Enterprise"
-  - custom_hsi_segment (Select): "0" | "1" | "100" | "200" | "500" | "500+"
-  - custom_first_paid_date (Datetime): first paid timestamp (from subscription or shop.created_at)
 
 Role-based Contact → HD Customer linking:
   - owner, admin → Contact linked to HD Customer → sees ALL org tickets
@@ -23,30 +15,17 @@ Role-based Contact → HD Customer linking:
 """
 
 import frappe
-from frappe.utils import now_datetime
-from datetime import datetime
 
 # Haravan roles that grant org-wide ticket visibility via Contact → HD Customer link.
 # owner/admin can see ALL tickets of their Haravan org in the Helpdesk portal.
 # Staff users only see tickets they created themselves.
 HD_CUSTOMER_LINK_ROLES = {"owner", "admin"}
 
-def _format_haravan_date(iso_str: str) -> str | None:
-    if not iso_str:
-        return None
-    try:
-        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-        # Convert to local server timezone
-        return dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
-    except Exception:
-        return None
-
-
 def enrich_helpdesk_data(user: str, profile: dict):
     """Main entry point — called from oauth._persist_after_login().
 
-    Creates/updates HD Customer, Contact, and User records based on
-    the normalized Haravan profile.
+    Creates/updates only native Helpdesk identity links from Haravan login
+    claims. Rich customer profile data is fetched from Bitrix on demand.
     """
     from login_with_haravan.engines.haravan_identity import normalize_haravan_profile
 
@@ -151,30 +130,6 @@ def upsert_hd_customer(normalized: dict) -> str | None:
         doc.custom_haravan_orgid = org_id_int
         doc.custom_myharavan = f"{org_id}.myharavan.com"
 
-        org_data = normalized.get("haravan_org_data", {})
-        if org_data.get("plan_display_name"):
-            doc.custom_shopplan_name = org_data["plan_display_name"]
-        if org_data.get("plan_status"):
-            doc.custom_shopplan_status = org_data["plan_status"]
-        if org_data.get("province_name"):
-            doc.custom_province_name = org_data["province_name"]
-        if org_data.get("country_name"):
-            doc.custom_country = org_data["country_name"]
-        expired = org_data.get("plan_expired_at")
-        if expired:
-            formatted_expired = _format_haravan_date(expired)
-            if formatted_expired:
-                doc.custom_expired_date = formatted_expired
-        # First paid date: subscription_created_at (priority) or shop.created_at (fallback)
-        first_paid_raw = (
-            org_data.get("subscription_created_at")
-            or org_data.get("created_at")
-        )
-        if first_paid_raw:
-            formatted_date = _format_haravan_date(first_paid_raw)
-            if formatted_date:
-                doc.custom_first_paid_date = formatted_date
-
         doc.flags.ignore_permissions = True
         doc.insert(ignore_permissions=True)
         return doc.name
@@ -209,48 +164,6 @@ def _update_hd_customer_metadata(
         if domain and not doc.custom_myharavan:
             doc.custom_myharavan = domain
             changed = True
-
-        org_data = normalized.get("haravan_org_data", {})
-
-        # Always update plan fields (plan can change via upgrade/downgrade)
-        plan_name = org_data.get("plan_display_name")
-        if plan_name and doc.custom_shopplan_name != plan_name:
-            doc.custom_shopplan_name = plan_name
-            changed = True
-
-        plan_status = org_data.get("plan_status")
-        if plan_status and getattr(doc, "custom_shopplan_status", None) != plan_status:
-            doc.custom_shopplan_status = plan_status
-            changed = True
-
-        expired = org_data.get("plan_expired_at")
-        if expired:
-            formatted_expired = _format_haravan_date(expired)
-            if formatted_expired and getattr(doc, "custom_expired_date", None) != formatted_expired:
-                doc.custom_expired_date = formatted_expired
-                changed = True
-
-        # Only fill location fields if empty (rarely changes)
-        province = org_data.get("province_name")
-        if province and not getattr(doc, "custom_province_name", None):
-            doc.custom_province_name = province
-            changed = True
-
-        country = org_data.get("country_name")
-        if country and not getattr(doc, "custom_country", None):
-            doc.custom_country = country
-            changed = True
-
-        # First paid date: subscription_created_at (priority) or shop.created_at (fallback)
-        first_paid_raw = (
-            org_data.get("subscription_created_at")
-            or org_data.get("created_at")
-        )
-        if first_paid_raw and not doc.custom_first_paid_date:
-            formatted_date = _format_haravan_date(first_paid_raw)
-            if formatted_date:
-                doc.custom_first_paid_date = formatted_date
-                changed = True
 
         if changed:
             doc.flags.ignore_permissions = True

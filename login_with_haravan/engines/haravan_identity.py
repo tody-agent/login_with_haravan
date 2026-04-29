@@ -44,8 +44,7 @@ def normalize_haravan_profile(payload: dict[str, Any]) -> dict[str, Any]:
     if missing:
         raise HaravanIdentityError(f"Missing Haravan identity field(s): {', '.join(missing)}")
 
-    org_data = payload.get("haravan_org_data") or {}
-    org_name = _first_string(payload, "orgname", "org_name") or _first_string(org_data, "name") or org_id
+    org_name = _first_string(payload, "orgname", "org_name") or org_id
 
     normalized = dict(payload)
     normalized.update(

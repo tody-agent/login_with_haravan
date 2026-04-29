@@ -18,7 +18,6 @@ HARAVAN_FLAT_CLIENT_ID_KEY = "haravan_client_id"
 HARAVAN_FLAT_CLIENT_SECRET_KEY = "haravan_client_secret"
 
 HELPDESK_SECRET_CONFIG_KEYS: dict[str, tuple[str, ...]] = {
-    "inside": ("inside_api_key", "inside_api_secret"),
     "ai": ("gemini_api_key", "gemini_model", "openrouter_api_key"),
     "bitrix": (
         "bitrix_webhook_url",
@@ -28,8 +27,17 @@ HELPDESK_SECRET_CONFIG_KEYS: dict[str, tuple[str, ...]] = {
         "bitrix_client_secret",
         "bitrix_base_url",
         "bitrix_domain",
+        "bitrix_enabled",
+        "bitrix_timeout_seconds",
+        "bitrix_refresh_ttl_minutes",
     ),
     "gitlab": ("gitlab_token", "gitlab_base_url"),
+}
+
+BITRIX_RUNTIME_DEFAULTS = {
+    "bitrix_enabled": 1,
+    "bitrix_timeout_seconds": 15,
+    "bitrix_refresh_ttl_minutes": 60,
 }
 
 
@@ -92,6 +100,52 @@ def get_helpdesk_secret_status(conf: Any | None = None) -> dict[str, dict[str, d
                 "source": "site_config" if _has_value(value) else "missing",
             }
     return status
+
+
+def get_bitrix_config(conf: Any | None = None) -> dict[str, Any]:
+    """Return Bitrix runtime config for server-side callers only."""
+    webhook_url = get_site_config_value("bitrix_webhook_url", conf=conf)
+    access_token = get_site_config_value("bitrix_access_token", conf=conf)
+    base_url = get_site_config_value("bitrix_base_url", conf=conf)
+    domain = get_site_config_value("bitrix_domain", conf=conf)
+    enabled = _as_bool(
+        get_site_config_value(
+            "bitrix_enabled",
+            BITRIX_RUNTIME_DEFAULTS["bitrix_enabled"],
+            conf=conf,
+        )
+    )
+    timeout_seconds = _as_int(
+        get_site_config_value(
+            "bitrix_timeout_seconds",
+            BITRIX_RUNTIME_DEFAULTS["bitrix_timeout_seconds"],
+            conf=conf,
+        ),
+        BITRIX_RUNTIME_DEFAULTS["bitrix_timeout_seconds"],
+    )
+    refresh_ttl_minutes = _as_int(
+        get_site_config_value(
+            "bitrix_refresh_ttl_minutes",
+            BITRIX_RUNTIME_DEFAULTS["bitrix_refresh_ttl_minutes"],
+            conf=conf,
+        ),
+        BITRIX_RUNTIME_DEFAULTS["bitrix_refresh_ttl_minutes"],
+    )
+
+    configured = bool(_has_value(webhook_url) or (_has_value(base_url) and _has_value(access_token)))
+    return {
+        "enabled": enabled,
+        "configured": configured,
+        "webhook_url": webhook_url,
+        "access_token": access_token,
+        "refresh_token": get_site_config_value("bitrix_refresh_token", conf=conf),
+        "client_id": get_site_config_value("bitrix_client_id", conf=conf),
+        "client_secret": get_site_config_value("bitrix_client_secret", conf=conf),
+        "base_url": base_url,
+        "domain": domain,
+        "timeout_seconds": timeout_seconds,
+        "refresh_ttl_minutes": refresh_ttl_minutes,
+    }
 
 
 def get_site_or_legacy_secret(
@@ -195,6 +249,23 @@ def _has_value(value: Any) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
     return True
+
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() not in {"0", "false", "no", "off", ""}
+    return bool(value)
+
+
+def _as_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _summarize_sources(client_id_source: str | None, client_secret_source: str | None) -> str:

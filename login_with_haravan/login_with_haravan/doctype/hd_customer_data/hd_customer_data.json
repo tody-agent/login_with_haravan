@@ -1,0 +1,132 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "format:BTRX-{entity_type}-{external_id}",
+ "creation": "2026-04-29 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "link_section",
+  "hd_customer",
+  "contact",
+  "source",
+  "entity_type",
+  "external_id",
+  "external_url",
+  "sync_section",
+  "match_key",
+  "confidence",
+  "last_synced_at",
+  "summary_json"
+ ],
+ "fields": [
+  {
+   "fieldname": "link_section",
+   "fieldtype": "Section Break",
+   "label": "Links"
+  },
+  {
+   "fieldname": "hd_customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "HD Customer",
+   "options": "HD Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "contact",
+   "fieldtype": "Link",
+   "label": "Contact",
+   "options": "Contact"
+  },
+  {
+   "default": "bitrix",
+   "fieldname": "source",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Source",
+   "reqd": 1
+  },
+  {
+   "fieldname": "entity_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Entity Type",
+   "options": "company\ncontact",
+   "reqd": 1
+  },
+  {
+   "fieldname": "external_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "External ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "external_url",
+   "fieldtype": "Data",
+   "label": "External URL"
+  },
+  {
+   "fieldname": "sync_section",
+   "fieldtype": "Section Break",
+   "label": "Sync"
+  },
+  {
+   "fieldname": "match_key",
+   "fieldtype": "Data",
+   "label": "Match Key"
+  },
+  {
+   "fieldname": "confidence",
+   "fieldtype": "Percent",
+   "label": "Confidence"
+  },
+  {
+   "fieldname": "last_synced_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Synced At"
+  },
+  {
+   "fieldname": "summary_json",
+   "fieldtype": "Code",
+   "label": "Summary JSON",
+   "options": "JSON"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-29 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Login With Haravan",
+ "name": "HD Customer Data",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Agent"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "external_id",
+ "track_changes": 1
+}

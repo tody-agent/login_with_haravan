@@ -208,8 +208,8 @@ class TestUpsertHdCustomer(unittest.TestCase):
         self.assertEqual(doc.custom_haravan_orgid, 99999)
         self.assertIsInstance(doc.custom_haravan_orgid, int)
 
-    def test_creates_hd_customer_with_shop_plan_fields(self):
-        """Should set all shop plan fields from haravan_org_data on creation."""
+    def test_ignores_legacy_haravan_org_data_on_create(self):
+        """Login sync should not write old Haravan commerce enrichment fields."""
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
         doc.name = "12345 - Test Shop"
@@ -228,11 +228,10 @@ class TestUpsertHdCustomer(unittest.TestCase):
         }
         result = upsert_hd_customer(normalized)
 
-        self.assertEqual(doc.custom_shopplan_name, "OMNICHANNEL")
-        self.assertEqual(doc.custom_shopplan_status, "active")
-        self.assertEqual(doc.custom_province_name, "Hồ Chí Minh")
-        self.assertEqual(doc.custom_country, "Vietnam")
-        self.assertIsNotNone(doc.custom_expired_date)
+        self.assertNotEqual(doc.custom_shopplan_name, "OMNICHANNEL")
+        self.assertNotEqual(doc.custom_shopplan_status, "active")
+        self.assertNotEqual(doc.custom_province_name, "Hồ Chí Minh")
+        self.assertNotEqual(doc.custom_country, "Vietnam")
         doc.insert.assert_called_once()
 
     def test_creates_hd_customer_without_org_data(self):
@@ -247,8 +246,8 @@ class TestUpsertHdCustomer(unittest.TestCase):
         doc.insert.assert_called_once()
         self.assertEqual(result, "12345 - Test Shop")
 
-    def test_updates_plan_fields_on_existing_customer(self):
-        """Should update plan fields when plan changes (e.g. upgrade)."""
+    def test_does_not_update_legacy_plan_fields_on_existing_customer(self):
+        """Bitrix on-demand profile replaced Haravan shop/subscription updates."""
         frappe_mock.db.get_value.return_value = "12345 - Test Shop"
         existing_doc = MagicMock()
         existing_doc.domain = "12345.myharavan.com"
@@ -275,9 +274,8 @@ class TestUpsertHdCustomer(unittest.TestCase):
         }
         upsert_hd_customer(normalized)
 
-        # Plan name should be updated (upgrade)
-        self.assertEqual(existing_doc.custom_shopplan_name, "OMNICHANNEL")
-        existing_doc.save.assert_called_once()
+        self.assertEqual(existing_doc.custom_shopplan_name, "STANDARD")
+        existing_doc.save.assert_not_called()
 
 
 class TestUpsertContact(unittest.TestCase):
@@ -484,14 +482,14 @@ class TestAutoSetCustomer(unittest.TestCase):
         self.assertIsNone(doc.customer)
         frappe_mock.get_all.assert_not_called()
 
-class TestFirstPaidDateFallback(unittest.TestCase):
-    """Test that custom_first_paid_date uses shop.created_at as fallback."""
+class TestLegacyHaravanCommerceDataIgnored(unittest.TestCase):
+    """Haravan login no longer writes commerce metadata during login."""
 
     def setUp(self):
         _reset_frappe_mock()
 
-    def test_create_uses_shop_created_at_when_no_subscription(self):
-        """Should use shop.created_at for first_paid_date when subscription is empty."""
+    def test_create_ignores_shop_created_at(self):
+        """Should not use shop.created_at for first paid date."""
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
         doc.name = "12345 - Test Shop"
@@ -508,15 +506,10 @@ class TestFirstPaidDateFallback(unittest.TestCase):
         }
         upsert_hd_customer(normalized)
 
-        self.assertIsNotNone(doc.custom_first_paid_date)
-        # Timezone-agnostic: just verify it starts with correct date portion
-        self.assertTrue(
-            doc.custom_first_paid_date.startswith("2020-04-2"),
-            f"Expected date near 2020-04-20, got {doc.custom_first_paid_date}"
-        )
+        self.assertNotIsInstance(doc.custom_first_paid_date, str)
 
-    def test_create_prefers_subscription_over_shop_created_at(self):
-        """Should use subscription_created_at when available (higher priority)."""
+    def test_create_ignores_subscription_created_at(self):
+        """Should not use subscription_created_at for first paid date."""
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
         doc.name = "12345 - Test Shop"
@@ -532,11 +525,7 @@ class TestFirstPaidDateFallback(unittest.TestCase):
         }
         upsert_hd_customer(normalized)
 
-        self.assertIsNotNone(doc.custom_first_paid_date)
-        self.assertTrue(
-            doc.custom_first_paid_date.startswith("2021-06-15"),
-            f"Expected date starting with 2021-06-15, got {doc.custom_first_paid_date}"
-        )
+        self.assertNotIsInstance(doc.custom_first_paid_date, str)
 
 
 if __name__ == "__main__":

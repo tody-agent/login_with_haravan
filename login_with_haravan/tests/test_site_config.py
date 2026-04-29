@@ -86,18 +86,16 @@ class SiteConfigCredentialsTest(unittest.TestCase):
 
         status = get_helpdesk_secret_status(
             conf={
-                "inside_api_key": "inside-secret",
                 "gemini_api_key": "gemini-secret",
                 "bitrix_access_token": "bitrix-secret",
                 "gitlab_token": "gitlab-secret",
             }
         )
 
-        self.assertTrue(status["inside"]["inside_api_key"]["configured"])
+        self.assertNotIn("inside", status)
         self.assertTrue(status["ai"]["gemini_api_key"]["configured"])
         self.assertTrue(status["bitrix"]["bitrix_access_token"]["configured"])
         self.assertTrue(status["gitlab"]["gitlab_token"]["configured"])
-        self.assertNotIn("inside-secret", repr(status))
         self.assertNotIn("gemini-secret", repr(status))
         self.assertNotIn("bitrix-secret", repr(status))
         self.assertNotIn("gitlab-secret", repr(status))

@@ -20,10 +20,9 @@ Thêm các key sau nếu tính năng tương ứng đang dùng:
 | --- | --- | --- |
 | Haravan OAuth | `haravan_account_login` | JSON: `{"client_id":"...","client_secret":"..."}` |
 | Haravan OAuth fallback | `haravan_client_id`, `haravan_client_secret` | Chỉ dùng nếu Frappe Cloud không lưu được JSON object |
-| Inside | `inside_api_key`, `inside_api_secret` | Dùng cho enrich/tích hợp Inside |
 | AI Gemini | `gemini_api_key`, `gemini_model` | `gemini_model` không secret nhưng để cùng chỗ cho dễ vận hành |
 | AI OpenRouter | `openrouter_api_key` | Dùng cho workflow toolbar nếu chọn OpenRouter |
-| Bitrix | `bitrix_webhook_url`, `bitrix_access_token`, `bitrix_refresh_token`, `bitrix_client_id`, `bitrix_client_secret`, `bitrix_base_url`, `bitrix_domain` | Tùy flow đang dùng webhook hay OAuth |
+| Bitrix | `bitrix_webhook_url`, `bitrix_access_token`, `bitrix_refresh_token`, `bitrix_client_id`, `bitrix_client_secret`, `bitrix_base_url`, `bitrix_domain`, `bitrix_enabled`, `bitrix_timeout_seconds`, `bitrix_refresh_ttl_minutes` | Nguồn enrich Customer Profile duy nhất |
 | GitLab | `gitlab_token`, `gitlab_base_url` | Nếu bật GitLab popup/link issue |
 
 Không paste secret vào chat, ticket, Git, hoặc file markdown. Tài liệu này chỉ ghi tên key.
@@ -116,14 +115,12 @@ helpdesk_secret_status.<nhóm>.<key>.configured = true
 
 - Haravan login thành công và tạo/cập nhật `Haravan Account Link`.
 - AI Summary / AI Reply gọi được model đang cấu hình.
-- Inside enrichment chạy được với ticket test.
-- Bitrix inbound/outbound flow chạy được nếu đang bật.
+- Bitrix Customer Profile mở được trên ticket test nếu đang bật.
 - GitLab popup tạo/search/link issue được nếu đang bật.
 
 8. Sau khi smoke test pass, xóa giá trị secret trong Settings DocType cũ:
 
 - `Social Login Key.client_secret`
-- `HD Haravan Inside Settings` token/secret fields
 - `HD Bitrix Settings` token/webhook/client secret fields
 - `HD AI Settings` hoặc `Boxme AI Integration Settings` API key fields
 - `GitLab Settings.access_token`
@@ -135,7 +132,7 @@ Giữ lại non-secret config như `enabled`, `model`, `timeout`, `default_proje
 Haravan team cần giữ:
 
 - Danh sách owner được quyền xem/sửa Site Config.
-- Nơi tạo/rotate từng token: Haravan Partner App, Gemini/OpenRouter, Bitrix, Inside, GitLab.
+- Nơi tạo/rotate từng token: Haravan Partner App, Gemini/OpenRouter, Bitrix, GitLab.
 - Lịch rotate token định kỳ hoặc sau nhân sự thay đổi.
 - Checklist smoke test sau mỗi lần rotate.
 - Quy định: Client Script / HD Form Script không bao giờ chứa token.

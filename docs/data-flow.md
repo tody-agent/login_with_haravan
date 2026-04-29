@@ -27,7 +27,7 @@ sequenceDiagram
     Haravan->>Frappe: Callback /oauth.login_via_haravan (code, state)
     Frappe->>Haravan: Đổi code lấy Access Token
     Haravan-->>Frappe: Access Token + ID Token
-    Frappe->>Haravan: Fetch User & Org Info
+    Frappe->>Haravan: Fetch UserInfo login claims
     Haravan-->>Frappe: JSON Data (orgid, email, etc.)
     Frappe->>DB: Upsert HD Customer & Contact
     Frappe->>DB: Upsert Haravan Account Link
@@ -37,8 +37,8 @@ sequenceDiagram
 ## 2. Đồng bộ Khách hàng (Sync Logic)
 Logic chính nằm ở `login_with_haravan/engines/sync_helpdesk.py`:
 1. **Tìm kiếm HD Customer:** Ưu tiên tìm theo `custom_haravan_orgid`. Nếu không có, tìm theo tên `[OrgID] - [OrgName]`.
-2. **Tạo/Cập nhật:** Cập nhật các trường `domain`, `custom_shopplan_name`.
-3. **First Paid Date (Fallback logic):** Trường `custom_first_paid_date` được ưu tiên lấy từ `subscription_created_at` (API Gói dịch vụ). Nếu trống, hệ thống sẽ sử dụng `shop.created_at` làm giá trị thay thế (chỉ điền 1 lần khi tạo mới).
+2. **Tạo/Cập nhật:** Chỉ cập nhật dữ liệu định danh tối thiểu như `domain`, `custom_haravan_orgid`, `custom_myharavan`.
+3. **Customer Profile:** Dữ liệu hồ sơ chi tiết được lấy từ Bitrix khi agent mở hoặc refresh panel Customer Profile.
 4. **Phân quyền Contact (Role-based Linking):**
    - **Owner / Admin:** Được tự động tạo `Contact` và liên kết (link) với `HD Customer`. Nhờ đó, họ có thể **xem toàn bộ ticket** của tổ chức.
    - **Staff:** Tạo `Contact` nhưng **KHÔNG** liên kết với `HD Customer`. Nhân viên chỉ có thể **xem các ticket do chính họ tạo ra**.

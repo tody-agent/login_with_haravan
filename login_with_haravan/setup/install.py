@@ -8,18 +8,82 @@ from login_with_haravan.engines.site_config import get_haravan_login_credentials
 PROVIDER_DOCNAME = "haravan_account"
 PROVIDER_NAME = "Haravan Account"
 
-# HD Customer custom fields are managed manually via Frappe Customize Form.
-# Production fields: custom_haravan_orgid (Int), custom_myharavan (Data),
-# custom_shopplan_name (Data), custom_customer_segment (Select),
-# custom_hsi_segment (Select), custom_first_paid_date (Datetime)
+HELPDESK_PROFILE_CUSTOM_FIELDS = {
+    "HD Customer": [
+        {
+            "fieldname": "custom_haravan_orgid",
+            "label": "Haravan Org ID",
+            "fieldtype": "Int",
+            "insert_after": "domain",
+        },
+        {
+            "fieldname": "custom_myharavan",
+            "label": "MyHaravan Domain",
+            "fieldtype": "Data",
+            "insert_after": "custom_haravan_orgid",
+        },
+        {
+            "fieldname": "custom_bitrix_company_id",
+            "label": "Bitrix Company ID",
+            "fieldtype": "Data",
+            "insert_after": "custom_myharavan",
+        },
+        {
+            "fieldname": "custom_bitrix_company_url",
+            "label": "Bitrix Company URL",
+            "fieldtype": "Data",
+            "insert_after": "custom_bitrix_company_id",
+        },
+        {
+            "fieldname": "custom_bitrix_match_confidence",
+            "label": "Bitrix Match Confidence",
+            "fieldtype": "Percent",
+            "insert_after": "custom_bitrix_company_url",
+        },
+        {
+            "fieldname": "custom_bitrix_sync_status",
+            "label": "Bitrix Sync Status",
+            "fieldtype": "Data",
+            "insert_after": "custom_bitrix_match_confidence",
+        },
+        {
+            "fieldname": "custom_bitrix_last_synced_at",
+            "label": "Bitrix Last Synced At",
+            "fieldtype": "Datetime",
+            "insert_after": "custom_bitrix_sync_status",
+        },
+    ],
+    "Contact": [
+        {
+            "fieldname": "custom_bitrix_contact_id",
+            "label": "Bitrix Contact ID",
+            "fieldtype": "Data",
+            "insert_after": "email_id",
+        },
+        {
+            "fieldname": "custom_bitrix_contact_url",
+            "label": "Bitrix Contact URL",
+            "fieldtype": "Data",
+            "insert_after": "custom_bitrix_contact_id",
+        },
+        {
+            "fieldname": "custom_bitrix_last_synced_at",
+            "label": "Bitrix Last Synced At",
+            "fieldtype": "Datetime",
+            "insert_after": "custom_bitrix_contact_url",
+        },
+    ],
+}
 
 
 def after_install():
     configure_haravan_social_login()
+    configure_customer_profile_metadata()
 
 
 def after_migrate():
     configure_haravan_social_login()
+    configure_customer_profile_metadata()
 
 
 
@@ -61,7 +125,7 @@ def configure_haravan_social_login(
                 {
                     "response_mode": "query",
                     "response_type": "code",
-                    "scope": "openid profile email org userinfo com.read_shop",
+                    "scope": "openid profile email org userinfo",
                 }
             ),
             "user_id_property": "sub",
@@ -122,3 +186,31 @@ def _get_configured_credentials(provider_doc=None) -> dict:
     # Frappe core get_oauth_keys() looks for f"{provider}_login" = "haravan_account_login".
     # The shorter "haravan_login" and flat keys are accepted for backward compatibility.
     return get_haravan_login_credentials(provider_doc=provider_doc)
+
+
+@frappe.whitelist()
+def configure_customer_profile_metadata():
+    """Create custom fields used by Bitrix on-demand customer profiles."""
+    created = []
+    for dt, fields in HELPDESK_PROFILE_CUSTOM_FIELDS.items():
+        if not frappe.db.exists("DocType", dt):
+            continue
+        for field in fields:
+            custom_field_name = f"{dt}-{field['fieldname']}"
+            if frappe.db.exists("Custom Field", custom_field_name):
+                continue
+            doc = frappe.new_doc("Custom Field")
+            doc.dt = dt
+            doc.update(field)
+            doc.flags.ignore_permissions = True
+            doc.insert(ignore_permissions=True)
+            created.append(custom_field_name)
+
+    if created:
+        frappe.db.commit()
+
+    return {
+        "success": True,
+        "data": {"created": created},
+        "message": "Customer profile metadata configured.",
+    }

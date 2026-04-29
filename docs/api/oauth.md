@@ -23,10 +23,11 @@ Tài liệu tham khảo cho endpoint xử lý callback từ Haravan.
 1. Xác thực `code` và `state`.
 2. Gắn kết đè (override) `redirect_to` nếu có cookie `haravan_login_redirect_to`.
 3. Gọi `fetch_haravan_info_and_token` để lấy Access Token.
-4. Gọi `fetch_org_and_subscription_data` để lấy metadata của tổ chức.
-5. Định dạng profile qua `normalize_haravan_profile`.
-6. Đăng nhập user vào Frappe.
-7. Xử lý lưu trữ bất đồng bộ (Persistence): Gọi `enrich_helpdesk_data` để tạo HD Customer và Contact.
+4. Định dạng profile qua `normalize_haravan_profile`.
+5. Đăng nhập user vào Frappe.
+6. Xử lý lưu trữ bất đồng bộ (Persistence): Gọi `enrich_helpdesk_data` để tạo HD Customer và Contact từ claim đăng nhập tối thiểu.
+
+Luồng OAuth không gọi Haravan commerce/shop API nữa. Hồ sơ khách hàng giàu dữ liệu được lấy từ Bitrix khi agent mở Customer Profile.
 
 ### Error Handling
 Nếu có lỗi, sẽ ghi vào **Error Log** của Frappe với tiêu đề `Haravan social login failed`.
