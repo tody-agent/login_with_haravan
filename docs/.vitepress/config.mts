@@ -28,6 +28,7 @@ export default withMermaid(defineConfig({
         text: 'SOP & Hướng dẫn',
         items: [
           { text: 'Cài đặt', link: '/sop/installation' },
+          { text: 'Bàn giao vận hành Haravan', link: '/sop/haravan-helpdesk-handoff' },
           { text: 'Cấu hình Haravan', link: '/CONFIGURATION' },
           { text: 'Khắc phục sự cố', link: '/TROUBLESHOOTING' }
         ]

@@ -2,11 +2,11 @@
 
 ## Active Goal
 
-Productionize a standalone Frappe app that lets users log into Frappe Helpdesk with Haravan Account and stores Haravan `userid`, `email`, and `orgid`.
+Write and publish an operator handoff guide for Haravan staff receiving the Frappe Helpdesk configuration.
 
 ## Current Phase
 
-Deployed to Frappe Cloud bench/site, validating OAuth configuration with Haravan Partner Dashboard.
+Documentation update complete locally: VitePress SOP added for Helpdesk configuration, scripts, Site Config tokens, DocTypes, permissions, and FAQ.
 
 ## Known Production Site
 
@@ -74,8 +74,6 @@ Latest known version/tag:
 
 ## Next Actions
 
-1. Confirm the Social Login Key exists and is enabled in Frappe.
-2. Confirm Haravan Partner Dashboard has the exact callback URL.
-3. Copy the login button link and decode `redirect_uri` if Haravan still rejects.
-4. After successful login, verify `Haravan Account Link` records contain `email`, `haravan_userid`, `haravan_orgid`.
-5. Use `docs/NEXT_STEPS_FOR_AGENT.md` as the production setup checklist.
+1. Stage and commit the handoff docs.
+2. Run the repo test gate.
+3. Ship with `npm run ship` so the VitePress docs deployment can pick up `main`.
