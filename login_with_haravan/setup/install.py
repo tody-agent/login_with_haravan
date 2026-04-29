@@ -75,17 +75,68 @@ HELPDESK_PROFILE_CUSTOM_FIELDS = {
     ],
 }
 
+HELPDESK_TICKET_CUSTOM_FIELDS = {
+    "HD Ticket": [
+        {
+            "fieldname": "custom_link_web_myharavan",
+            "label": "Link Web / MyHaravan",
+            "fieldtype": "Data",
+            "insert_after": "raised_by",
+            "reqd": 1,
+        },
+        {
+            "fieldname": "custom_org_id",
+            "label": "Org ID",
+            "fieldtype": "Data",
+            "insert_after": "customer",
+            "read_only": 1,
+            "hidden": 1,
+        },
+        {
+            "fieldname": "custom_myharavan_domain",
+            "label": "MyHaravan Domain",
+            "fieldtype": "Data",
+            "insert_after": "custom_org_id",
+            "read_only": 1,
+            "hidden": 1,
+        },
+        {
+            "fieldname": "custom_product_suggestion",
+            "label": "Product Suggestion",
+            "fieldtype": "Data",
+            "insert_after": "source",
+            "reqd": 1,
+        },
+        {
+            "fieldname": "custom_product_line",
+            "label": "Product Line",
+            "fieldtype": "Data",
+            "insert_after": "custom_product_suggestion",
+            "read_only": 1,
+            "hidden": 1,
+        },
+        {
+            "fieldname": "custom_product_feature",
+            "label": "Product Feature",
+            "fieldtype": "Data",
+            "insert_after": "custom_product_line",
+            "read_only": 1,
+            "hidden": 1,
+        },
+    ],
+}
+
 
 def after_install():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
+    configure_ticket_autofill_metadata()
 
 
 def after_migrate():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
-
-
+    configure_ticket_autofill_metadata()
 
 
 
@@ -213,4 +264,57 @@ def configure_customer_profile_metadata():
         "success": True,
         "data": {"created": created},
         "message": "Customer profile metadata configured.",
+    }
+
+
+@frappe.whitelist()
+def configure_ticket_autofill_metadata():
+    """Create or update HD Ticket custom fields used by agent ticket autofill."""
+    changed = []
+    for dt, fields in HELPDESK_TICKET_CUSTOM_FIELDS.items():
+        if not frappe.db.exists("DocType", dt):
+            continue
+        for field in fields:
+            custom_field_name = f"{dt}-{field['fieldname']}"
+            existing_name = (
+                custom_field_name
+                if frappe.db.exists("Custom Field", custom_field_name)
+                else frappe.db.get_value(
+                    "Custom Field",
+                    {"dt": dt, "label": field["label"]},
+                    "name",
+                    cache=False,
+                )
+            )
+            if existing_name:
+                doc = frappe.get_doc("Custom Field", existing_name)
+                doc_changed = False
+                for key, value in field.items():
+                    if key == "fieldname":
+                        continue
+                    if key == "fieldtype" and existing_name != custom_field_name:
+                        continue
+                    if getattr(doc, key, None) != value:
+                        setattr(doc, key, value)
+                        doc_changed = True
+                if doc_changed:
+                    doc.flags.ignore_permissions = True
+                    doc.save(ignore_permissions=True)
+                    changed.append(existing_name)
+                continue
+
+            doc = frappe.new_doc("Custom Field")
+            doc.dt = dt
+            doc.update(field)
+            doc.flags.ignore_permissions = True
+            doc.insert(ignore_permissions=True)
+            changed.append(custom_field_name)
+
+    if changed:
+        frappe.db.commit()
+
+    return {
+        "success": True,
+        "data": {"changed": changed},
+        "message": "Ticket autofill metadata configured.",
     }

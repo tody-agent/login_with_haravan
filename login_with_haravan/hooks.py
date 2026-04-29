@@ -13,10 +13,12 @@ web_include_js = [
     "/assets/login_with_haravan/js/haravan_login_redirect.js",
     "/assets/login_with_haravan/js/haravan_org_selector.js",
     "/assets/login_with_haravan/js/customer_profile_panel.js",
+    "/assets/login_with_haravan/js/ticket_autofill.js",
 ]
 
 doc_events = {
     "HD Ticket": {
+        "before_validate": "login_with_haravan.engines.ticket_autofill.auto_fill_ticket_fields",
         "before_insert": "login_with_haravan.engines.sync_helpdesk.auto_set_customer"
     }
 }

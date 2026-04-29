@@ -2,11 +2,11 @@
 
 ## Active Goal
 
-Productionize a standalone Frappe app that lets users log into Frappe Helpdesk with Haravan Account and stores Haravan `userid`, `email`, and `orgid`.
+Personalize the Helpdesk new-ticket form so agents only enter `Link Web / MyHaravan` and `Product Suggestion`, while customer/org/product metadata is resolved automatically.
 
 ## Current Phase
 
-Deployed to Frappe Cloud bench/site, validating OAuth configuration with Haravan Partner Dashboard.
+Planning ticket autofill implementation.
 
 ## Known Production Site
 
@@ -74,8 +74,6 @@ Latest known version/tag:
 
 ## Next Actions
 
-1. Confirm the Social Login Key exists and is enabled in Frappe.
-2. Confirm Haravan Partner Dashboard has the exact callback URL.
-3. Copy the login button link and decode `redirect_uri` if Haravan still rejects.
-4. After successful login, verify `Haravan Account Link` records contain `email`, `haravan_userid`, `haravan_orgid`.
-5. Use `docs/NEXT_STEPS_FOR_AGENT.md` as the production setup checklist.
+1. Add HD Ticket custom-field metadata setup.
+2. Add ticket autofill engine and whitelisted API.
+3. Add Helpdesk SPA script and focused tests.
