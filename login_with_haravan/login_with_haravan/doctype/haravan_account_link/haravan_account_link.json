@@ -18,7 +18,9 @@
   "haravan_orgname",
   "haravan_orgcat",
   "haravan_roles",
-  "raw_profile"
+  "raw_profile",
+  "helpdesk_section",
+  "hd_customer"
  ],
  "fields": [
   {
@@ -86,6 +88,17 @@
    "fieldtype": "Code",
    "label": "Raw Profile",
    "options": "JSON"
+  },
+  {
+   "fieldname": "helpdesk_section",
+   "fieldtype": "Section Break",
+   "label": "Helpdesk"
+  },
+  {
+   "fieldname": "hd_customer",
+   "fieldtype": "Link",
+   "label": "HD Customer",
+   "options": "HD Customer"
   }
  ],
  "grid_page_length": 50,

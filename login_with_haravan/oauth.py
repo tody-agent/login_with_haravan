@@ -15,6 +15,7 @@ from login_with_haravan.engines.haravan_identity import (
     make_link_name,
     normalize_haravan_profile,
 )
+from login_with_haravan.engines.sync_helpdesk import enrich_helpdesk_data
 
 PROVIDER = "haravan_account"
 REDIRECT_COOKIE = "haravan_login_redirect_to"
@@ -91,6 +92,7 @@ def login_via_haravan(code: str | None = None, state: str | None = None, **kwarg
 
     try:
         info = get_info_via_oauth(PROVIDER, code, decoder=decoder_compat)
+
     except Exception as exc:
         _log_oauth_failure(
             "get_info_via_oauth",
@@ -142,15 +144,19 @@ def _persist_after_login(profile: dict):
         return
 
     try:
-        upsert_haravan_account_link(user, profile)
+        hd_customer_name = enrich_helpdesk_data(user, profile)
+        upsert_haravan_account_link(user, profile, hd_customer=hd_customer_name)
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "Haravan Account Link persistence failed")
+        frappe.log_error(frappe.get_traceback(), "Haravan post-login persistence failed")
 
 
-def upsert_haravan_account_link(user: str, profile: dict):
+
+def upsert_haravan_account_link(user: str, profile: dict, hd_customer: str | None = None):
     fields = build_link_fields(user, profile)
     doc_name = make_link_name(fields["haravan_orgid"], fields["haravan_userid"])
     fields["last_login"] = now_datetime()
+    if hd_customer:
+        fields["hd_customer"] = hd_customer
 
     if frappe.db.exists("Haravan Account Link", doc_name):
         doc = frappe.get_doc("Haravan Account Link", doc_name)
@@ -165,3 +171,29 @@ def upsert_haravan_account_link(user: str, profile: dict):
         doc.insert(ignore_permissions=True)
 
     return doc.name
+
+
+@frappe.whitelist()
+def get_user_haravan_orgs():
+    """Return list of HD Customers linked to current user via Haravan Account Link.
+
+    Used by the portal frontend to populate the org picker dropdown.
+    """
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return []
+
+    links = frappe.get_all(
+        "Haravan Account Link",
+        filters={"user": user},
+        fields=["haravan_orgid", "haravan_orgname", "hd_customer"],
+    )
+    return [
+        {
+            "orgid": link.haravan_orgid,
+            "orgname": link.haravan_orgname,
+            "customer": link.hd_customer,
+        }
+        for link in links
+        if link.hd_customer
+    ]

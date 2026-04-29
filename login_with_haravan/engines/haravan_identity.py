@@ -56,6 +56,8 @@ def normalize_haravan_profile(payload: dict[str, Any]) -> dict[str, Any]:
             "orgname": _first_string(payload, "orgname", "org_name") or "",
             "orgcat": _first_string(payload, "orgcat", "org_category") or "",
             "name": _first_string(payload, "name", "full_name", "email") or email,
+            "middle_name": _first_string(payload, "middle_name") or "",
+            "locale": _first_string(payload, "locale") or "",
             "role": _normalize_roles(payload.get("role") or payload.get("roles")),
         }
     )
