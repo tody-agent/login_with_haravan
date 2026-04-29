@@ -51,7 +51,7 @@ def configure_haravan_social_login(
             "custom_base_url": 1,
             "authorize_url": "/connect/authorize",
             "access_token_url": "/connect/token",
-            "redirect_url": "/api/method/login_with_haravan.oauth.login_via_haravan",
+            "redirect_url": getattr(doc, "redirect_url", None) or "/api/method/login_with_haravan.oauth.login_via_haravan",
             "api_endpoint": "/connect/userinfo",
             "api_endpoint_args": None,
             "auth_url_data": json.dumps(
