@@ -1,6 +1,6 @@
 app_name = "login_with_haravan"
 app_title = "Login With Haravan"
-app_version = "0.1.1"
+app_version = "0.1.2"
 app_publisher = "Haravan"
 app_description = "Social login bridge from Haravan Account to Frappe Helpdesk"
 app_email = "dev@haravan.com"
