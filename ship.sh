@@ -18,9 +18,8 @@ git push -u origin "$CURRENT_BRANCH"
 
 # 2. Checkout main and pull latest
 echo ">> [2/5] Switching to main and pulling latest..."
-git fetch origin
 git checkout main
-git reset --hard origin/main
+git pull origin main
 
 # 3. Merge feature branch into main
 echo ">> [3/5] Merging $CURRENT_BRANCH into main..."
