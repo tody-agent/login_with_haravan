@@ -26,7 +26,7 @@ sequenceDiagram
     User->>Haravan: Cấp quyền
     Haravan->>Frappe: Callback /oauth.login_via_haravan (code, state)
     Frappe->>Haravan: Đổi code lấy Access Token
-    Haravan-->>Frappe: Access Token + ID Token
+    Haravan-->>Frappe: Access Token
     Frappe->>Haravan: Fetch UserInfo login claims
     Haravan-->>Frappe: JSON Data (orgid, email, etc.)
     Frappe->>DB: Upsert HD Customer & Contact

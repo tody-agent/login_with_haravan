@@ -9,7 +9,9 @@ robots: index, follow
 
 Tài liệu này dành cho nhân viên Haravan tiếp nhận hệ thống Helpdesk tại:
 
-[https://haravandesk.s.frappe.cloud](https://haravandesk.s.frappe.cloud)
+[https://haravan.help](https://haravan.help)
+
+Frappe Cloud site slug: `haravandesk.s.frappe.cloud`.
 
 Mục tiêu là giúp người vận hành hiểu hệ thống đang chạy theo mô hình nào, vào đâu để cấu hình form ticket, sản phẩm gợi ý, quyền khách hàng, token tích hợp, và khi nào cần chuyển việc sang đội kỹ thuật.
 
@@ -51,7 +53,7 @@ flowchart TD
 
 Trang cấu hình chính:
 
-[HD Ticket Template - Default](https://haravandesk.s.frappe.cloud/desk/hd-ticket-template/Default)
+[HD Ticket Template - Default](https://haravan.help/desk/hd-ticket-template/Default)
 
 `HD Ticket Template` quyết định field nào xuất hiện khi khách tạo ticket trên Helpdesk portal. Frappe Helpdesk yêu cầu custom field phải được tạo trên `HD Ticket` trước, sau đó mới thêm field đó vào template `Default`. Tài liệu chính thức của Frappe Helpdesk cũng ghi rõ field dependency chỉ hỗ trợ field type `Select` hoặc `Link`, và các field tham gia dependency phải được thêm vào template `Default`: [Field Dependency](https://docs.frappe.io/helpdesk/field-dependency).
 
@@ -104,7 +106,7 @@ Checklist sau khi chỉnh:
 
 Trang cấu hình:
 
-[HD Ticket Product Suggestion](https://haravandesk.s.frappe.cloud/desk/hd-ticket-product-suggestion)
+[HD Ticket Product Suggestion](https://haravan.help/desk/hd-ticket-product-suggestion)
 
 Phần này là cấu hình nghiệp vụ trên Frappe/Helpdesk site, không nằm trong custom app `login_with_haravan`. Dùng nó để chuẩn hóa cách hệ thống gợi ý hoặc chọn sản phẩm khi khách tạo ticket hoặc khi agent phân loại ticket.
 
@@ -217,10 +219,12 @@ Value mẫu:
 }
 ```
 
+Nếu cần ép domain callback mà không migrate/setup, thêm `redirect_uri` vào JSON trên.
+
 Redirect URL phải khớp chính xác trong Haravan Partner Dashboard:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 ### AI
@@ -455,8 +459,8 @@ Chỉ dùng Settings DocType như fallback migration tạm thời. Chuẩn vận
 
 ### Tài liệu liên quan
 
-- [Cấu hình Haravan](/CONFIGURATION)
-- [Site Config Secret Handoff](/SITE_CONFIG_HANDOFF)
-- [Cơ sở dữ liệu](/database)
-- [Customer Profile API](/api/customer-profile)
-- [Khắc phục sự cố](/TROUBLESHOOTING)
+- [Cấu hình Haravan](../../docs/guide/configuration.md)
+- [Site Config Secret Handoff](../SITE_CONFIG.md)
+- [Cơ sở dữ liệu](../../docs/architecture/database.md)
+- [Customer Profile API](../../docs/api/customer-profile.md)
+- [Khắc phục sự cố](../../docs/guide/troubleshooting.md)

@@ -4,6 +4,7 @@ import frappe
 
 from login_with_haravan.engines.site_config import (
     get_haravan_login_credentials,
+    get_haravan_redirect_uri_config,
     get_helpdesk_secret_status,
 )
 from login_with_haravan.setup.install import PROVIDER_DOCNAME
@@ -23,6 +24,7 @@ def get_haravan_login_status():
 
     doc = frappe.get_doc("Social Login Key", PROVIDER_DOCNAME)
     credentials = get_haravan_login_credentials(provider_doc=doc)
+    redirect_config = get_haravan_redirect_uri_config(provider_doc=doc)
     auth_url_data = doc.auth_url_data or "{}"
     if isinstance(auth_url_data, str):
         try:
@@ -44,6 +46,8 @@ def get_haravan_login_status():
             "access_token_url": doc.access_token_url,
             "redirect_url": doc.redirect_url,
             "full_redirect_url": frappe.utils.get_url(doc.redirect_url),
+            "effective_redirect_uri": redirect_config["redirect_uri"],
+            "redirect_uri_source": redirect_config["source"],
             "api_endpoint": doc.api_endpoint,
             "user_id_property": doc.user_id_property,
             "sign_ups": doc.sign_ups,

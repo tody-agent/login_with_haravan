@@ -40,3 +40,13 @@ class TestFrontendSafety(unittest.TestCase):
                     re.search(r"--\s+>", content),
                     f"{filename} contains broken HTML comments."
                 )
+
+    def test_haravan_login_script_rewrites_redirect_uri_for_custom_domain(self):
+        """The login page script should repair stale Frappe Cloud redirect_uri values."""
+        filepath = os.path.join(self.public_js_dir, "haravan_login_redirect.js")
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("redirect_uri", content)
+        self.assertIn("frappe.cloud", content)
+        self.assertIn("login_with_haravan.oauth.login_via_haravan", content)

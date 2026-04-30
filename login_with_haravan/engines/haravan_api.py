@@ -1,8 +1,10 @@
 import requests
 import frappe
-from frappe.utils import get_url
 
-from login_with_haravan.engines.site_config import get_haravan_login_credentials
+from login_with_haravan.engines.site_config import (
+    get_haravan_login_credentials,
+    get_haravan_redirect_uri_config,
+)
 
 
 def fetch_haravan_info_and_token(code: str, decoder=None, conf=None) -> tuple[dict, str]:
@@ -13,7 +15,10 @@ def fetch_haravan_info_and_token(code: str, decoder=None, conf=None) -> tuple[di
     if not client_id or not client_secret:
         frappe.throw("Haravan OAuth client credentials are not configured in site config.")
 
-    redirect_uri = get_url(provider_doc.redirect_url)
+    redirect_uri = get_haravan_redirect_uri_config(
+        conf=conf,
+        provider_doc=provider_doc,
+    )["redirect_uri"]
 
     base_url = provider_doc.base_url
     token_url = provider_doc.access_token_url
