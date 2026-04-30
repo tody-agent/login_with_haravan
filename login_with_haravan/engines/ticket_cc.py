@@ -1,7 +1,5 @@
 """Ticket-level CC email normalization and merge helpers."""
 
-from __future__ import annotations
-
 import re
 from email.utils import parseaddr
 from typing import Iterable
