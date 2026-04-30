@@ -7,7 +7,7 @@ Frappe custom app for logging in to Frappe Helpdesk with a Haravan Account.
 User flow:
 
 ```text
-https://haravandesk.s.frappe.cloud/login
+https://haravan.help/login
   -> Login with Haravan Account
   -> Haravan OAuth login
   -> Frappe callback
@@ -29,8 +29,13 @@ Records are saved in the `Haravan Account Link` DocType. Frappe also stores the 
 Add this URL in Haravan Partner Dashboard:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
+
+By default the app keeps the Social Login Key callback path relative, so Frappe
+uses the active request domain automatically. If a fixed domain is needed, set
+`haravan_account_login.redirect_uri` in bench/site config; changing that value
+does not require a migration.
 
 ## Required Scopes
 
@@ -42,7 +47,7 @@ openid profile email org userinfo
 
 ```bash
 cd /Volumes/Data/Frappe/frappe-bench
-ln -sfn /Volumes/Data/Haravan/login_with_haravan apps/login_with_haravan
+ln -sfn /Volumes/Data/Haravan/frappe_login_with_haravan apps/login_with_haravan
 ./env/bin/pip install -e apps/login_with_haravan
 bench --site boxme.localhost install-app login_with_haravan
 bench --site boxme.localhost set-config haravan_account_login '{"client_id":"HARAVAN_CLIENT_ID","client_secret":"HARAVAN_CLIENT_SECRET"}'
@@ -60,18 +65,18 @@ This package includes OpenSpec and handoff docs so another AI agent can continue
 AGENTS.md
 .cm/CONTINUITY.md
 openspec/project.md
+openspec/AGENT_HANDOFF.md
+openspec/AGENT_NEXT_STEPS.md
+openspec/SITE_CONFIG.md
 openspec/changes/haravan-social-login/design.md
 openspec/changes/haravan-social-login/tasks.md
 openspec/changes/haravan-social-login/specs/social-login/spec.md
-docs/AGENT_HANDOFF.md
-docs/NEXT_STEPS_FOR_AGENT.md
-docs/OAUTH_FLOW.md
-docs/CONFIGURATION.md
-docs/SITE_CONFIG_HANDOFF.md
-docs/TROUBLESHOOTING.md
+docs/architecture/oauth-flow.md
+docs/guide/configuration.md
+docs/guide/troubleshooting.md
 ```
 
-Start with `AGENTS.md`, then `openspec/project.md`, then `.cm/CONTINUITY.md`, then `docs/NEXT_STEPS_FOR_AGENT.md`.
+Start with `AGENTS.md`, then `openspec/project.md`, then `.cm/CONTINUITY.md`, then `openspec/AGENT_NEXT_STEPS.md`.
 
 ## Run Tests
 

@@ -5,11 +5,13 @@ This document is the operating checklist for the next agent or human operator. T
 ## Current Situation
 
 - Frappe app source exists and has been deployed/installed at least once.
-- Production target site:
+- Production public domain:
 
 ```text
-https://haravandesk.s.frappe.cloud
+https://haravan.help
 ```
+
+Frappe Cloud site slug remains `haravandesk.s.frappe.cloud`.
 
 - GitHub repo:
 
@@ -17,13 +19,13 @@ https://haravandesk.s.frappe.cloud
 https://github.com/tody-agent/login_with_haravan
 ```
 
-- Known active issue:
+- Known redirect-risk area:
 
 ```text
-Haravan returns invalid_request / Invalid redirect_uri
+Haravan can return invalid_request / Invalid redirect_uri if configuration drifts.
 ```
 
-This error occurs on `accounts.haravan.com` before the Frappe callback is called. Treat it as a Haravan Partner App redirect URL configuration issue until proven otherwise.
+This error occurs on `accounts.haravan.com` before the Frappe callback is called. Compare the generated authorize URL against `haravan_account_login.redirect_uri` and the Haravan Partner Dashboard value before debugging callback code.
 
 ## Required Values
 
@@ -32,13 +34,13 @@ This error occurs on `accounts.haravan.com` before the Frappe callback is called
 Register this exact URL in Haravan Partner Dashboard:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 Rules:
 
 - Must be `https`.
-- Must use `haravandesk.s.frappe.cloud`.
+- Must use the configured public domain, currently `haravan.help`.
 - Must not have a trailing slash.
 - Must not be URL-encoded when pasted into the Partner Dashboard field.
 - Must belong to the same Haravan app as the Client ID and Client Secret configured in Frappe.
@@ -72,10 +74,20 @@ Value:
 }
 ```
 
+Optional fixed-domain override:
+
+```json
+{
+  "client_id": "HARAVAN_CLIENT_ID",
+  "client_secret": "HARAVAN_CLIENT_SECRET",
+  "redirect_uri": "https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan"
+}
+```
+
 The values must come from the Haravan Partner App that contains the callback URL above.
 The older `haravan_login` key and flat `haravan_client_id` / `haravan_client_secret`
 keys remain supported only for backward compatibility.
-For the full Site Config handoff and non-OAuth secret list, read `docs/SITE_CONFIG_HANDOFF.md`.
+For the full Site Config handoff and non-OAuth secret list, read `openspec/SITE_CONFIG.md`.
 
 ## Step 1: Configure Haravan Partner App
 
@@ -89,7 +101,7 @@ Checklist for the operator:
 - [ ] Add this callback:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 - [ ] Configure login scopes:
@@ -229,7 +241,7 @@ Manual browser check:
 1. Open:
 
 ```text
-https://haravandesk.s.frappe.cloud/login
+https://haravan.help/login
 ```
 
 2. Right-click `Login with Haravan Account`.
@@ -238,7 +250,7 @@ https://haravandesk.s.frappe.cloud/login
 5. It must equal:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 Interpretation:
@@ -261,7 +273,7 @@ Steps:
 1. Open:
 
 ```text
-https://haravandesk.s.frappe.cloud/login
+https://haravan.help/login
 ```
 
 2. Click `Login with Haravan Account`.
@@ -312,7 +324,9 @@ It should return non-secret status:
   "provider_name": "Haravan Account",
   "base_url": "https://accounts.haravan.com",
   "redirect_url": "/api/method/login_with_haravan.oauth.login_via_haravan",
-  "full_redirect_url": "https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan",
+  "full_redirect_url": "https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan",
+  "effective_redirect_uri": "https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan",
+  "redirect_uri_source": "request_host",
   "has_client_id": true,
   "has_client_secret": true,
   "auth_url_data": {

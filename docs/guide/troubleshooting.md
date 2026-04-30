@@ -13,14 +13,15 @@ robots: index, follow
 Haravan từ chối yêu cầu đăng nhập trước khi Frappe có cơ hội chạy callback. Lỗi này xuất phát từ việc URL cấu hình trên Partner Dashboard không khớp.
 
 **Cách khắc phục:**
-1. Mở `https://haravandesk.s.frappe.cloud/login`.
+1. Mở domain đang dùng làm primary, ví dụ `https://haravan.help/login`.
 2. Chuột phải vào nút `Login with Haravan Account` và chọn "Copy link address" (Sao chép địa chỉ liên kết).
 3. Giải mã tham số `redirect_uri` trong liên kết vừa sao chép.
-4. Đảm bảo nó khớp hoàn toàn với:
+4. Đảm bảo nó khớp hoàn toàn với domain đã cấu hình:
    ```text
-   https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+   https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
    ```
 5. Đảm bảo bạn đã nhập chính xác URL này vào phần **Redirect URLs** trên Haravan Partner Dashboard.
+6. Nếu domain primary vừa đổi, ưu tiên mở login bằng domain mới để hệ thống tự sinh callback. Nếu cần ép domain, cấu hình `haravan_account_login.redirect_uri` trong Site Config; không cần migrate/setup.
 
 ## 2. Nút "Login with Haravan" không xuất hiện
 

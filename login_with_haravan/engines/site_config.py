@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from typing import Any
+from urllib.parse import urljoin, urlparse
 
 import frappe
 
@@ -16,6 +17,9 @@ import frappe
 HARAVAN_LOGIN_CONFIG_KEYS = ("haravan_account_login", "haravan_login")
 HARAVAN_FLAT_CLIENT_ID_KEY = "haravan_client_id"
 HARAVAN_FLAT_CLIENT_SECRET_KEY = "haravan_client_secret"
+HARAVAN_REDIRECT_URI_KEY = "haravan_redirect_uri"
+HARAVAN_PUBLIC_BASE_URL_KEYS = ("haravan_public_base_url", "helpdesk_public_base_url")
+HARAVAN_OAUTH_CALLBACK_PATH = "/api/method/login_with_haravan.oauth.login_via_haravan"
 
 HELPDESK_SECRET_CONFIG_KEYS: dict[str, tuple[str, ...]] = {
     "ai": ("gemini_api_key", "gemini_model", "openrouter_api_key"),
@@ -85,6 +89,49 @@ def get_haravan_login_credentials(
         "client_id_source": client_id_source or "missing",
         "client_secret_source": client_secret_source or "missing",
         "source": source,
+    }
+
+
+def get_haravan_redirect_uri_config(
+    conf: Any | None = None,
+    provider_doc: Any | None = None,
+) -> dict[str, str]:
+    """Return the effective Haravan OAuth callback URL and where it came from.
+
+    Haravan validates `redirect_uri` by exact string match. Keep this helper as
+    the single source used by setup, diagnostics, and token exchange.
+    """
+    grouped_config = _get_haravan_grouped_config(conf=conf)
+    provider_redirect = _non_empty_string(getattr(provider_doc, "redirect_url", None))
+    callback_path = _callback_path_from_redirect(provider_redirect)
+
+    redirect_uri = _non_empty_string(grouped_config.get("redirect_uri")) or _non_empty_string(
+        get_site_config_value(HARAVAN_REDIRECT_URI_KEY, conf=conf)
+    )
+    if redirect_uri:
+        return {
+            "redirect_uri": _normalize_absolute_url(redirect_uri),
+            "source": "site_config.redirect_uri",
+        }
+
+    public_base_url = _non_empty_string(grouped_config.get("public_base_url")) or _non_empty_string(
+        grouped_config.get("redirect_base_url")
+    )
+    if not public_base_url:
+        for key in HARAVAN_PUBLIC_BASE_URL_KEYS:
+            public_base_url = _non_empty_string(get_site_config_value(key, conf=conf))
+            if public_base_url:
+                break
+
+    if public_base_url:
+        return {
+            "redirect_uri": _build_absolute_url(public_base_url, callback_path),
+            "source": "site_config.public_base_url",
+        }
+
+    return {
+        "redirect_uri": frappe.utils.get_url(callback_path),
+        "source": "request_host",
     }
 
 
@@ -172,12 +219,7 @@ def get_site_or_legacy_secret(
 
 
 def _get_haravan_site_credentials(conf: Any | None = None) -> dict[str, str | None]:
-    grouped_credentials: dict[str, Any] = {}
-    for key in HARAVAN_LOGIN_CONFIG_KEYS:
-        grouped_credentials = _coerce_mapping(get_site_config_value(key, conf=conf))
-        if grouped_credentials:
-            break
-
+    grouped_credentials = _get_haravan_grouped_config(conf=conf)
     client_id = grouped_credentials.get("client_id") or get_site_config_value(
         HARAVAN_FLAT_CLIENT_ID_KEY, conf=conf
     )
@@ -191,6 +233,14 @@ def _get_haravan_site_credentials(conf: Any | None = None) -> dict[str, str | No
         "client_id_source": "site_config" if _has_value(client_id) else None,
         "client_secret_source": "site_config" if _has_value(client_secret) else None,
     }
+
+
+def _get_haravan_grouped_config(conf: Any | None = None) -> dict[str, Any]:
+    for key in HARAVAN_LOGIN_CONFIG_KEYS:
+        grouped_config = _coerce_mapping(get_site_config_value(key, conf=conf))
+        if grouped_config:
+            return grouped_config
+    return {}
 
 
 def _get_frappe_conf() -> Any | None:
@@ -249,6 +299,37 @@ def _has_value(value: Any) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
     return True
+
+
+def _non_empty_string(value: Any) -> str | None:
+    if not _has_value(value):
+        return None
+    return str(value).strip()
+
+
+def _normalize_absolute_url(value: str) -> str:
+    url = value.strip()
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.netloc:
+        return url.rstrip("/")
+    if url.startswith("//"):
+        return f"https:{url}".rstrip("/")
+    if url.startswith("/"):
+        return frappe.utils.get_url(url)
+    return f"https://{url.lstrip('/')}".rstrip("/")
+
+
+def _build_absolute_url(base_url: str, path: str) -> str:
+    return urljoin(_normalize_absolute_url(base_url).rstrip("/") + "/", path.lstrip("/"))
+
+
+def _callback_path_from_redirect(redirect_url: str | None) -> str:
+    if not redirect_url:
+        return HARAVAN_OAUTH_CALLBACK_PATH
+    parsed = urlparse(redirect_url)
+    if parsed.scheme and parsed.netloc:
+        return parsed.path or HARAVAN_OAUTH_CALLBACK_PATH
+    return redirect_url
 
 
 def _as_bool(value: Any) -> bool:

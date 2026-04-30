@@ -7,8 +7,10 @@
 ## Production Target
 
 ```text
-https://haravandesk.s.frappe.cloud
+https://haravan.help
 ```
+
+Frappe Cloud site slug: `haravandesk.s.frappe.cloud`.
 
 ## App Name
 

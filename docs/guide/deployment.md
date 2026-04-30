@@ -36,12 +36,10 @@ Frappe Cloud hoạt động dựa trên cơ chế kéo code (pull) trực tiếp
 ### 2.1. Cập nhật mã nguồn
 Sau khi code chạy ổn định trên local:
 ```bash
-git add .
-git commit -m "feat: [Mô tả tính năng bạn vừa làm]"
-git push origin main
+npm run ship
 ```
 
-*(Lưu ý: Đối với dự án này, nếu có quy định làm việc qua nhánh tính năng (feature branches), hãy tạo PR và merge vào `main`. Khuyến nghị sử dụng kịch bản `./ship.sh` nếu có).*
+`ship.sh` sẽ chạy theo workflow của repo: test gate, push nhánh hiện tại, merge về `main`, rồi push `main`. Không push trực tiếp lên `main` khi đang làm feature/fix branch.
 
 ---
 

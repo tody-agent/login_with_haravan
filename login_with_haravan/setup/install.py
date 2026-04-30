@@ -3,7 +3,11 @@ import json
 import frappe
 from frappe import _
 
-from login_with_haravan.engines.site_config import get_haravan_login_credentials
+from login_with_haravan.engines.site_config import (
+    HARAVAN_OAUTH_CALLBACK_PATH,
+    get_haravan_login_credentials,
+    get_haravan_redirect_uri_config,
+)
 
 PROVIDER_DOCNAME = "haravan_account"
 PROVIDER_NAME = "Haravan Account"
@@ -98,6 +102,8 @@ def configure_haravan_social_login(
     explicit_client_secret = client_secret
     doc = _get_or_create_social_login_key()
     credentials = _get_configured_credentials(doc)
+    redirect_config = get_haravan_redirect_uri_config(provider_doc=doc)
+    redirect_url = _select_social_login_redirect_url(doc, redirect_config)
     client_id = client_id or credentials.get("client_id")
     client_secret = client_secret or credentials.get("client_secret")
 
@@ -118,7 +124,7 @@ def configure_haravan_social_login(
             "custom_base_url": 1,
             "authorize_url": "/connect/authorize",
             "access_token_url": "/connect/token",
-            "redirect_url": getattr(doc, "redirect_url", None) or "/api/method/login_with_haravan.oauth.login_via_haravan",
+            "redirect_url": redirect_url,
             "api_endpoint": "/connect/userinfo",
             "api_endpoint_args": None,
             "auth_url_data": json.dumps(
@@ -155,7 +161,8 @@ def configure_haravan_social_login(
         "data": {
             "name": doc.name,
             "enabled": bool(doc.enable_social_login),
-            "redirect_url": frappe.utils.get_url(doc.redirect_url),
+            "redirect_url": redirect_config["redirect_uri"],
+            "redirect_uri_source": redirect_config.get("source"),
             "credential_source": credentials.get("source"),
             "client_id_source": credentials.get("client_id_source"),
             "client_secret_source": credentials.get("client_secret_source"),
@@ -165,6 +172,13 @@ def configure_haravan_social_login(
         },
         "message": "Haravan social login key configured.",
     }
+
+
+def _select_social_login_redirect_url(doc, redirect_config: dict[str, str]) -> str:
+    # Keep the DocType value relative so Frappe can build the authorize URL from
+    # the active request host. Exact fixed domains should live in site_config
+    # (`haravan_account_login.redirect_uri`), which Frappe core reads at runtime.
+    return HARAVAN_OAUTH_CALLBACK_PATH
 
 
 def _get_or_create_social_login_key():

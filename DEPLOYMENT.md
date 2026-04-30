@@ -7,7 +7,7 @@ Create a Haravan public app or update the existing app.
 Allowed Redirect URL:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 Required login scopes:
@@ -21,8 +21,8 @@ For this login-only integration, do not add `grant_service`, `offline_access`, c
 See also:
 
 ```text
-docs/CONFIGURATION.md
-docs/TROUBLESHOOTING.md
+docs/guide/configuration.md
+docs/guide/troubleshooting.md
 ```
 
 ## 2. Local Bench Install
@@ -30,7 +30,7 @@ docs/TROUBLESHOOTING.md
 ```bash
 cd /Volumes/Data/Frappe/frappe-bench
 
-ln -sfn /Volumes/Data/Haravan/login_with_haravan apps/login_with_haravan
+ln -sfn /Volumes/Data/Haravan/frappe_login_with_haravan apps/login_with_haravan
 ./env/bin/pip install -e apps/login_with_haravan
 
 bench --site boxme.localhost install-app login_with_haravan
@@ -58,18 +58,23 @@ http://boxme.localhost:8000/login
 
 ## 3. Frappe Cloud Deploy
 
-1. Push `/Volumes/Data/Haravan/login_with_haravan` to a Git repository.
+1. Push `/Volumes/Data/Haravan/frappe_login_with_haravan` to a Git repository.
 2. In Frappe Cloud, add that repository as a custom app.
 3. Add the app to the bench that hosts `haravandesk.s.frappe.cloud`.
 4. Install `login_with_haravan` on the `haravandesk.s.frappe.cloud` site.
 5. Set site config values for Haravan Client ID and Client Secret.
 6. Run the setup method once, then clear cache.
 
-Expected callback path:
+Expected public callback URL when opening the site on `haravan.help`:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
+
+By default the callback domain is automatic because the Social Login Key stores
+only the relative callback path. If you need to force a specific domain without
+running migrate/setup, update `haravan_account_login.redirect_uri` in Site
+Config and make the Haravan Partner Dashboard redirect URL match exactly.
 
 ## 4. Manual Social Login Key Values
 
@@ -108,7 +113,7 @@ Auth URL Data:
 
 ## 5. Verify
 
-1. Go to `https://haravandesk.s.frappe.cloud/login`.
+1. Go to `https://haravan.help/login`.
 2. Click `Login with Haravan Account`.
 3. Complete Haravan login.
 4. Confirm Frappe redirects after login.
