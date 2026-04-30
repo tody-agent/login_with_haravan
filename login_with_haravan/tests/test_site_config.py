@@ -646,6 +646,7 @@ class SiteConfigCredentialsTest(unittest.TestCase):
             "custom_service_group",
             "custom_service_name",
             "custom_service_line",
+            "custom_service_onboarding_phrase",
             "custom_service_pricing",
             "custom_service_transaction_id",
             "custom_service_vendor",
