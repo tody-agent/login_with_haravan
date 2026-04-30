@@ -13,6 +13,7 @@ web_include_js = [
     "/assets/login_with_haravan/js/haravan_login_redirect.js",
     "/assets/login_with_haravan/js/haravan_org_selector.js",
     "/assets/login_with_haravan/js/customer_profile_panel.js",
+    "/assets/login_with_haravan/js/helpdesk_vi_override.js",
 ]
 
 extend_doctype_class = {
