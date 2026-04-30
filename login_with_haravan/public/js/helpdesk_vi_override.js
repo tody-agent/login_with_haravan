@@ -58,6 +58,7 @@
     "Ticket": "Yêu cầu",
     "My Tickets": "Yêu cầu của tôi",
     "New Ticket": "Tạo yêu cầu mới",
+    "New Support Ticket": "Phiếu hỗ trợ mới",
     "Knowledge Base": "Cơ sở Kiến thức",
     "Articles": "Bài viết",
     "Article": "Bài viết",
@@ -175,9 +176,11 @@
     "Created": "Đã tạo",
     "Owner": "Người tạo",
     "Type": "Loại yêu cầu",
+    "Ticket Type": "Loại yêu cầu",
     "Category": "Danh mục",
     "Group": "Nhóm",
     "Nhóm (Group)": "Nhóm",
+    "Product Suggestion": "Sản phẩm liên quan",
     "Loại yêu cầu (Type)": "Loại yêu cầu",
     "Sản phẩm liên quan (Suggestion)": "Sản phẩm liên quan",
     "Product Branch": "Nhánh sản phẩm",
@@ -185,7 +188,9 @@
     "Feature": "Tính năng",
     "Tính năng": "Tính năng",
     "Link Web / MyHaravan": "Link Web / MyHaravan",
+    "Shop / MyHaravan domain": "Tên miền Shop / MyHaravan",
 
+    "New": "Mới tạo",
     "Open": "Đang mở",
     "Replied": "Đã phản hồi",
     "Awaiting Response": "Chờ phản hồi",
@@ -307,6 +312,32 @@
     );
   }
 
+  function hasVietnamesePageSignal() {
+    var value = "";
+    if (!document.body) return false;
+
+    value = normalizeText(
+      [
+        document.title,
+        document.body.innerText || document.body.textContent || "",
+      ].join(" ")
+    ).toLowerCase();
+
+    return [
+      "danh sách yêu cầu",
+      "phiếu hỗ trợ mới",
+      "cơ sở kiến thức",
+      "chọn loại yêu cầu",
+      "số điện thoại",
+      "chủ đề",
+      "mô tả vấn đề",
+      "mới tạo",
+      "đã xử lý",
+    ].some(function (marker) {
+      return value.indexOf(marker) !== -1;
+    });
+  }
+
   function isVietnameseLocale() {
     var boot = getBoot();
     var explicitSignals = [];
@@ -323,9 +354,8 @@
     appendValue(explicitSignals, safeLocalStorageGet("language"));
     appendValue(explicitSignals, safeLocalStorageGet("lang"));
 
-    if (explicitSignals.length) {
-      return explicitSignals.some(isVietnameseSignal);
-    }
+    if (explicitSignals.some(isVietnameseSignal)) return true;
+    if (hasVietnamesePageSignal()) return true;
 
     appendValue(browserSignals, window.navigator && window.navigator.languages);
     appendValue(browserSignals, window.navigator && window.navigator.language);
