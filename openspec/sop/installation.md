@@ -17,7 +17,7 @@ Thực thi tuần tự các lệnh sau trong thư mục `frappe-bench`:
 
 ```bash
 # 1. Symlink app vào bench
-ln -sfn /Volumes/Data/Haravan/login_with_haravan apps/login_with_haravan
+ln -sfn /Volumes/Data/Haravan/frappe_login_with_haravan apps/login_with_haravan
 
 # 2. Cài đặt Python dependencies
 ./env/bin/pip install -e apps/login_with_haravan
@@ -42,8 +42,8 @@ bench --site boxme.localhost clear-cache
 
 1. Đăng nhập vào Haravan Partner Dashboard.
 2. Chọn **Apps** -> Ứng dụng Public / Custom.
-3. Trong phần **Redirect URLs**, điền:
-   `https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan`
+3. Trong phần **Redirect URLs**, điền domain public đang cấu hình:
+   `https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan`
 4. Lấy Client ID và Client Secret cập nhật vào Frappe.
 </details>
 

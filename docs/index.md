@@ -13,13 +13,14 @@ Tài liệu này là **Developer Handoff Manual** dành cho đội ngũ Kỹ sư
 
 ## 🌟 Vai trò của ứng dụng
 - **Đăng nhập OAuth 2.0:** Xác thực an toàn qua hệ thống `accounts.haravan.com`.
-- **Đồng bộ Profile:** Lấy thông tin tổ chức và tạo `HD Customer` trong Frappe Helpdesk.
-- **Sẵn sàng để mở rộng:** Cấu trúc 7-Layer chuẩn của Frappe, dễ dàng thêm tính năng mới (như lấy thông tin Orders, Webhooks) mà không phá vỡ core của Frappe.
+- **Liên kết danh tính Helpdesk:** Lưu thông tin tối thiểu từ Haravan Account để tạo `Haravan Account Link`, `HD Customer`, và `Contact`.
+- **Customer Profile theo nhu cầu:** Lấy dữ liệu hồ sơ giàu hơn từ Bitrix khi agent mở panel Customer Profile.
+- **Sẵn sàng để mở rộng:** Cấu trúc 7-Layer chuẩn của Frappe, dễ dàng thêm tính năng mới mà không phá vỡ core của Frappe.
 
 ## 📚 Hướng dẫn dành cho Developer
 - **[Kế hoạch & Bàn giao (Roadmap)](/about/plan):** Đọc file này đầu tiên để biết cách tiếp quản source code và các ý tưởng phát triển tiếp theo.
 - **[Kiến trúc Hệ thống](/architecture/overview):** Hiểu cách code được cấu trúc trong thư mục `login_with_haravan`.
 - **[Triển khai & Vận hành](/guide/deployment):** Cách đưa ứng dụng lên môi trường Production (Frappe Cloud).
-- **[Luồng dữ liệu](/architecture/data-flow):** Cách JWT token được giải mã và dữ liệu chuyển vào database.
+- **[Luồng dữ liệu](/architecture/data-flow):** Cách OAuth claims được chuẩn hóa và lưu vào database.
 
 [Bắt đầu với Kế hoạch Bàn giao & Phát triển](/about/plan)

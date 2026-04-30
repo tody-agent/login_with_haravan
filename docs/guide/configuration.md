@@ -29,6 +29,29 @@ Truy cập **Frappe Cloud > Site > Site Config > Add Config > Custom Key**.
 `haravan_login` và hai key rời `haravan_client_id` / `haravan_client_secret`
 để tương thích ngược, nhưng không nên dùng cho cấu hình mới.
 
+Mặc định app tự dùng domain hiện tại của request, vì `Social Login Key.redirect_url`
+được giữ dạng path tương đối:
+
+```text
+/api/method/login_with_haravan.oauth.login_via_haravan
+```
+
+Nếu cần cố định domain mà không muốn chạy migrate/setup, thêm `redirect_uri`
+vào chính key `haravan_account_login`:
+
+```json
+{
+  "client_id": "HARAVAN_CLIENT_ID",
+  "client_secret": "HARAVAN_CLIENT_SECRET",
+  "redirect_uri": "https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan"
+}
+```
+
+Khi đổi primary domain, cách tốt nhất là mở login bằng domain mới để hệ thống tự
+sinh callback theo domain đó. Nếu muốn ép domain, chỉ cần đổi
+`haravan_account_login.redirect_uri` trong Site Config và cập nhật URL y hệt
+trong Haravan Partner Dashboard.
+
 Các token/secret khác của Helpdesk cũng nên đặt ở Site Config thay vì Settings
 DocType:
 
@@ -80,10 +103,10 @@ For initial setup, see `openspec/SITE_CONFIG.md`. This document serves as the on
 
 ## 3. Haravan Partner Dashboard
 
-Trên ứng dụng Public / Custom bên trong Haravan Partner Dashboard, bạn phải điền chính xác đường dẫn Redirect URL:
+Trên ứng dụng Public / Custom bên trong Haravan Partner Dashboard, bạn phải điền chính xác đường dẫn Redirect URL đang được cấu hình:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 **Lưu ý**: Client ID và Client Secret ở Site Config phải được lấy ra từ ứng dụng chứa Redirect URL này. Không lưu plaintext secret trong Settings DocType sau khi smoke test production đã pass.

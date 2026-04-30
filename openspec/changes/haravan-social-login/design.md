@@ -43,7 +43,7 @@ https://accounts.haravan.com/connect/userinfo
 Callback:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 ### Frappe Callback
@@ -90,7 +90,9 @@ login_with_haravan/setup/install.py
 Responsibilities:
 
 - Create or update Social Login Key.
-- Read credentials from `frappe.conf.haravan_login`, `haravan_client_id`, or `haravan_client_secret`.
+- Read credentials from `haravan_account_login`, then legacy `haravan_login`, then flat `haravan_client_id` / `haravan_client_secret`.
+- Keep `Social Login Key.redirect_url` relative so Frappe can use the active request domain automatically.
+- Resolve token exchange callback from `haravan_account_login.redirect_uri` when configured, otherwise from the request domain.
 - Keep setup idempotent in `after_install` and `after_migrate`.
 
 ## Configuration
@@ -99,9 +101,21 @@ Site config:
 
 ```json
 {
-  "haravan_login": {
+  "haravan_account_login": {
     "client_id": "HARAVAN_CLIENT_ID",
     "client_secret": "HARAVAN_CLIENT_SECRET"
+  }
+}
+```
+
+Optional fixed-domain override:
+
+```json
+{
+  "haravan_account_login": {
+    "client_id": "HARAVAN_CLIENT_ID",
+    "client_secret": "HARAVAN_CLIENT_SECRET",
+    "redirect_uri": "https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan"
   }
 }
 ```
@@ -109,7 +123,7 @@ Site config:
 Haravan Partner Dashboard redirect URL must exactly match:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 ## Verification
@@ -124,7 +138,7 @@ python3 -m pip wheel . --no-deps -w /tmp/login_with_haravan_wheel_test
 
 Run production verification:
 
-1. Open `https://haravandesk.s.frappe.cloud/login`.
+1. Open `https://haravan.help/login`.
 2. Click `Login with Haravan Account`.
 3. Confirm Haravan accepts the redirect URI.
 4. Complete login.

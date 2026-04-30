@@ -4,10 +4,16 @@
 
 This repository is a standalone Frappe custom app that adds "Login with Haravan Account" to Frappe Helpdesk.
 
-Primary production site:
+Primary public production domain:
 
 ```text
-https://haravandesk.s.frappe.cloud
+https://haravan.help
+```
+
+Frappe Cloud site slug:
+
+```text
+haravandesk.s.frappe.cloud
 ```
 
 Current GitHub source repository:
@@ -40,11 +46,14 @@ Do not modify Frappe core or Helpdesk core for this integration.
 /api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
-- Full production callback URL is:
+- Current public callback URL is:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
+
+- Default behavior should be automatic: keep `Social Login Key.redirect_url` as the relative callback path so Frappe uses the active request domain.
+- If automatic domain detection is not acceptable, set the exact callback in bench/site config at `haravan_account_login.redirect_uri`. This can be changed without a code deploy or migration.
 
 ## Common Failure Modes
 
@@ -74,7 +83,7 @@ setup.py: name="login_with_haravan"
 This is Haravan Partner Dashboard configuration, not the callback code. The redirect URL registered in Haravan must exactly match:
 
 ```text
-https://haravandesk.s.frappe.cloud/api/method/login_with_haravan.oauth.login_via_haravan
+https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan
 ```
 
 ## Verification Commands

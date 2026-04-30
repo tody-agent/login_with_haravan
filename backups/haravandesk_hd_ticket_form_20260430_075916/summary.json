@@ -1,0 +1,10 @@
+{
+  "backup_dir": "backups/haravandesk_hd_ticket_form_20260430_075916",
+  "counts": {
+    "doctype_fields": 60,
+    "custom_fields": 62,
+    "property_setters": 36,
+    "template_fields": 20,
+    "hd_form_scripts": 12
+  }
+}
