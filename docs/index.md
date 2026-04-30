@@ -22,5 +22,6 @@ Tài liệu này là **Developer Handoff Manual** dành cho đội ngũ Kỹ sư
 - **[Kiến trúc Hệ thống](/architecture/overview):** Hiểu cách code được cấu trúc trong thư mục `login_with_haravan`.
 - **[Triển khai & Vận hành](/guide/deployment):** Cách đưa ứng dụng lên môi trường Production (Frappe Cloud).
 - **[Luồng dữ liệu](/architecture/data-flow):** Cách OAuth claims được chuẩn hóa và lưu vào database.
+- **[Helpdesk Script Registry](/guide/helpdesk-script-registry):** Quy ước đặt tên và bản đồ các script đang quản lý trên Haravan Helpdesk.
 
 [Bắt đầu với Kế hoạch Bàn giao & Phát triển](/about/plan)
