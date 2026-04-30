@@ -11,6 +11,7 @@ from login_with_haravan.engines.site_config import (
 
 PROVIDER_DOCNAME = "haravan_account"
 PROVIDER_NAME = "Haravan Account"
+HELPDESK_PRODUCT_SUGGESTION_DOCTYPE = "HD Ticket Product Suggestion"
 
 HELPDESK_PROFILE_CUSTOM_FIELDS = {
     "HD Customer": [
@@ -83,11 +84,13 @@ HELPDESK_PROFILE_CUSTOM_FIELDS = {
 def after_install():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
+    configure_helpdesk_product_suggestion_permissions()
 
 
 def after_migrate():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
+    configure_helpdesk_product_suggestion_permissions()
 
 
 
@@ -228,3 +231,66 @@ def configure_customer_profile_metadata():
         "data": {"created": created},
         "message": "Customer profile metadata configured.",
     }
+
+
+@frappe.whitelist()
+def configure_helpdesk_product_suggestion_permissions():
+    """Allow every user to read/select product suggestions on the ticket form."""
+    if not frappe.db.exists("DocType", HELPDESK_PRODUCT_SUGGESTION_DOCTYPE):
+        return {
+            "success": True,
+            "data": {"configured": False, "reason": "doctype_missing"},
+            "message": "HD Ticket Product Suggestion DocType is not installed.",
+        }
+
+    changed = _ensure_custom_docperm(
+        HELPDESK_PRODUCT_SUGGESTION_DOCTYPE,
+        role="All",
+        permissions={"read": 1, "select": 1},
+    )
+
+    if changed:
+        frappe.clear_cache(doctype=HELPDESK_PRODUCT_SUGGESTION_DOCTYPE)
+        frappe.db.commit()
+
+    return {
+        "success": True,
+        "data": {
+            "configured": True,
+            "doctype": HELPDESK_PRODUCT_SUGGESTION_DOCTYPE,
+            "role": "All",
+            "permissions": ["read", "select"],
+            "changed": changed,
+        },
+        "message": "HD Ticket Product Suggestion permissions configured.",
+    }
+
+
+def _ensure_custom_docperm(doctype: str, role: str, permissions: dict[str, int]) -> bool:
+    filters = {"parent": doctype, "role": role, "permlevel": 0}
+    docname = frappe.db.exists("Custom DocPerm", filters)
+    if docname:
+        doc = frappe.get_doc("Custom DocPerm", docname)
+    else:
+        doc = frappe.new_doc("Custom DocPerm")
+        doc.parent = doctype
+        doc.parenttype = "DocType"
+        doc.parentfield = "permissions"
+        doc.role = role
+        doc.permlevel = 0
+
+    changed = not docname
+    for fieldname, value in permissions.items():
+        if int(doc.get(fieldname) or 0) != int(value):
+            doc.set(fieldname, value)
+            changed = True
+
+    if not changed:
+        return False
+
+    doc.flags.ignore_permissions = True
+    if docname:
+        doc.save(ignore_permissions=True)
+    else:
+        doc.insert(ignore_permissions=True)
+    return True

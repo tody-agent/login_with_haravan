@@ -414,6 +414,62 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         self.assertEqual(updated_values["enable_social_login"], 1)
         self.assertTrue(result["data"]["client_secret_stored_in_doctype"])
 
+    def test_setup_grants_all_users_read_select_on_product_suggestion(self):
+        from login_with_haravan.setup import install
+
+        class FakeDocPerm:
+            def __init__(self):
+                self.values = {}
+                self.flags = MagicMock()
+                self.inserted = False
+
+            def get(self, fieldname):
+                return self.values.get(fieldname)
+
+            def set(self, fieldname, value):
+                self.values[fieldname] = value
+
+            def insert(self, ignore_permissions=False):
+                self.inserted = True
+
+        docperm = FakeDocPerm()
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType":
+                return True
+            if doctype == "Custom DocPerm":
+                return None
+            return None
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.new_doc.return_value = docperm
+
+        result = install.configure_helpdesk_product_suggestion_permissions()
+
+        self.assertTrue(result["data"]["configured"])
+        self.assertTrue(result["data"]["changed"])
+        self.assertEqual(docperm.parent, "HD Ticket Product Suggestion")
+        self.assertEqual(docperm.parenttype, "DocType")
+        self.assertEqual(docperm.parentfield, "permissions")
+        self.assertEqual(docperm.role, "All")
+        self.assertEqual(docperm.permlevel, 0)
+        self.assertEqual(docperm.values["read"], 1)
+        self.assertEqual(docperm.values["select"], 1)
+        self.assertTrue(docperm.inserted)
+        frappe_mock.clear_cache.assert_called_with(doctype="HD Ticket Product Suggestion")
+        frappe_mock.db.commit.assert_called()
+
+    def test_setup_skips_product_suggestion_permission_when_doctype_missing(self):
+        from login_with_haravan.setup import install
+
+        frappe_mock.db.exists.return_value = None
+
+        result = install.configure_helpdesk_product_suggestion_permissions()
+
+        self.assertFalse(result["data"]["configured"])
+        self.assertEqual(result["data"]["reason"], "doctype_missing")
+        frappe_mock.new_doc.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
