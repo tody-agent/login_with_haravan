@@ -12,6 +12,26 @@ from login_with_haravan.engines.site_config import (
 PROVIDER_DOCNAME = "haravan_account"
 PROVIDER_NAME = "Haravan Account"
 HELPDESK_PRODUCT_SUGGESTION_DOCTYPE = "HD Ticket Product Suggestion"
+HELPDESK_TICKET_DOCTYPE = "HD Ticket"
+HELPDESK_TICKET_TEMPLATE = "Default"
+
+HELPDESK_TICKET_CC_FIELD = {
+    "fieldname": "custom_cc_emails",
+    "label": "CC Emails",
+    "fieldtype": "Small Text",
+    "insert_after": "contact",
+    "description": (
+        "Enter CC emails separated by commas. "
+        "Example: abc@company.com, xyz@company.com"
+    ),
+}
+
+HELPDESK_TICKET_CC_TEMPLATE_FIELD = {
+    "fieldname": "custom_cc_emails",
+    "required": 0,
+    "hide_from_customer": 1,
+    "placeholder": "abc@company.com, xyz@company.com",
+}
 
 HELPDESK_PROFILE_CUSTOM_FIELDS = {
     "HD Customer": [
@@ -85,12 +105,14 @@ def after_install():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
     configure_helpdesk_product_suggestion_permissions()
+    configure_ticket_cc_metadata()
 
 
 def after_migrate():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
     configure_helpdesk_product_suggestion_permissions()
+    configure_ticket_cc_metadata()
 
 
 
@@ -231,6 +253,100 @@ def configure_customer_profile_metadata():
         "data": {"created": created},
         "message": "Customer profile metadata configured.",
     }
+
+
+@frappe.whitelist()
+def configure_ticket_cc_metadata():
+    """Create ticket-level CC metadata used by agent-created tickets and replies."""
+    if not frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
+        return {
+            "success": True,
+            "data": {"configured": False, "reason": "doctype_missing"},
+            "message": "HD Ticket DocType is not installed.",
+        }
+
+    custom_field_changed = _ensure_custom_field(
+        HELPDESK_TICKET_DOCTYPE,
+        HELPDESK_TICKET_CC_FIELD,
+    )
+    template_row_changed = _ensure_ticket_template_field(
+        HELPDESK_TICKET_TEMPLATE,
+        HELPDESK_TICKET_CC_TEMPLATE_FIELD,
+    )
+
+    if custom_field_changed or template_row_changed:
+        frappe.clear_cache(doctype=HELPDESK_TICKET_DOCTYPE)
+        frappe.clear_cache(doctype="HD Ticket Template")
+        frappe.db.commit()
+
+    return {
+        "success": True,
+        "data": {
+            "configured": True,
+            "custom_field": f"{HELPDESK_TICKET_DOCTYPE}-{HELPDESK_TICKET_CC_FIELD['fieldname']}",
+            "template": HELPDESK_TICKET_TEMPLATE,
+            "custom_field_changed": custom_field_changed,
+            "template_row_changed": template_row_changed,
+        },
+        "message": "Ticket CC metadata configured.",
+    }
+
+
+def _ensure_custom_field(doctype: str, field: dict[str, object]) -> bool:
+    custom_field_name = f"{doctype}-{field['fieldname']}"
+    existing = frappe.db.exists("Custom Field", custom_field_name)
+    doc = (
+        frappe.get_doc("Custom Field", custom_field_name)
+        if existing
+        else frappe.new_doc("Custom Field")
+    )
+
+    values = {"dt": doctype, **field}
+    changed = not bool(existing)
+    for key, value in values.items():
+        if getattr(doc, key, None) != value:
+            changed = True
+
+    if not changed:
+        return False
+
+    doc.update(values)
+    doc.flags.ignore_permissions = True
+    if existing:
+        doc.save(ignore_permissions=True)
+    else:
+        doc.insert(ignore_permissions=True)
+    return True
+
+
+def _ensure_ticket_template_field(template: str, row: dict[str, object]) -> bool:
+    if not frappe.db.exists("HD Ticket Template", template):
+        return False
+
+    filters = {
+        "parent": template,
+        "parenttype": "HD Ticket Template",
+        "parentfield": "fields",
+        "fieldname": row["fieldname"],
+    }
+    existing = frappe.db.exists("HD Ticket Template Field", filters)
+    if existing:
+        doc = frappe.get_doc("HD Ticket Template Field", existing)
+        changed = False
+        for key, value in row.items():
+            if getattr(doc, key, None) != value:
+                setattr(doc, key, value)
+                changed = True
+        if changed:
+            doc.flags.ignore_permissions = True
+            doc.save(ignore_permissions=True)
+        return changed
+
+    template_doc = frappe.get_doc("HD Ticket Template", template)
+    template_doc.append("fields", row)
+    template_doc.flags.ignore_permissions = True
+    template_doc.save(ignore_permissions=True)
+    return True
 
 
 @frappe.whitelist()

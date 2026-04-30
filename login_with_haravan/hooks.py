@@ -1,6 +1,6 @@
 app_name = "login_with_haravan"
 app_title = "Login With Haravan"
-app_version = "0.1.4"
+app_version = "0.1.5"
 app_publisher = "Haravan"
 app_description = "Social login bridge from Haravan Account to Frappe Helpdesk"
 app_email = "dev@haravan.com"
@@ -15,9 +15,14 @@ web_include_js = [
     "/assets/login_with_haravan/js/customer_profile_panel.js",
 ]
 
+extend_doctype_class = {
+    "HD Ticket": "login_with_haravan.overrides.hd_ticket.HDTicketCCMixin",
+}
+
 doc_events = {
     "HD Ticket": {
-        "before_insert": "login_with_haravan.engines.sync_helpdesk.auto_set_customer"
+        "before_insert": "login_with_haravan.engines.sync_helpdesk.auto_set_customer",
+        "before_validate": "login_with_haravan.engines.ticket_cc.validate_ticket_cc_emails",
     }
 }
 

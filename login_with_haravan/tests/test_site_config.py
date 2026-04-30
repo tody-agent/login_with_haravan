@@ -470,6 +470,67 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         self.assertEqual(result["data"]["reason"], "doctype_missing")
         frappe_mock.new_doc.assert_not_called()
 
+    def test_setup_creates_ticket_cc_field_and_template_row(self):
+        from login_with_haravan.setup import install
+
+        class FakeCustomField:
+            def __init__(self):
+                self.values = {}
+                self.flags = MagicMock()
+                self.inserted = False
+
+            def update(self, values):
+                self.values.update(values)
+                for key, value in values.items():
+                    setattr(self, key, value)
+
+            def insert(self, ignore_permissions=False):
+                self.inserted = True
+
+        class FakeTemplate:
+            def __init__(self):
+                self.rows = []
+                self.saved = False
+                self.flags = MagicMock()
+
+            def append(self, fieldname, row):
+                self.rows.append((fieldname, row))
+
+            def save(self, ignore_permissions=False):
+                self.saved = True
+
+        custom_field = FakeCustomField()
+        template = FakeTemplate()
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType" and filters == "HD Ticket":
+                return True
+            if doctype == "Custom Field":
+                return None
+            if doctype == "HD Ticket Template" and filters == "Default":
+                return True
+            if doctype == "HD Ticket Template Field":
+                return None
+            return None
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.new_doc.return_value = custom_field
+        frappe_mock.get_doc.return_value = template
+
+        result = install.configure_ticket_cc_metadata()
+
+        self.assertTrue(result["data"]["custom_field_changed"])
+        self.assertTrue(result["data"]["template_row_changed"])
+        self.assertTrue(custom_field.inserted)
+        self.assertEqual(custom_field.values["dt"], "HD Ticket")
+        self.assertEqual(custom_field.values["fieldname"], "custom_cc_emails")
+        self.assertEqual(custom_field.values["fieldtype"], "Small Text")
+        self.assertEqual(template.rows[0][0], "fields")
+        self.assertEqual(template.rows[0][1]["fieldname"], "custom_cc_emails")
+        self.assertEqual(template.rows[0][1]["hide_from_customer"], 1)
+        self.assertTrue(template.saved)
+        frappe_mock.db.commit.assert_called()
+
 
 if __name__ == "__main__":
     unittest.main()
