@@ -1,6 +1,6 @@
 app_name = "login_with_haravan"
 app_title = "Login With Haravan"
-app_version = "0.1.5"
+app_version = "0.1.6"
 app_publisher = "Haravan"
 app_description = "Social login bridge from Haravan Account to Frappe Helpdesk"
 app_email = "dev@haravan.com"
@@ -23,6 +23,7 @@ doc_events = {
     "HD Ticket": {
         "before_insert": "login_with_haravan.engines.sync_helpdesk.auto_set_customer",
         "before_validate": "login_with_haravan.engines.ticket_cc.validate_ticket_cc_emails",
+        "after_insert": "login_with_haravan.engines.ticket_cc.send_ticket_cc_created_notification",
     }
 }
 

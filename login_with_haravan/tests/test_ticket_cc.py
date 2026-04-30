@@ -59,6 +59,44 @@ class TicketCCEngineTest(unittest.TestCase):
 
         self.assertEqual(doc.custom_cc_emails, "owner@example.com, support@example.com")
 
+    def test_created_notification_sends_to_cc_for_portal_ticket(self):
+        from login_with_haravan.engines.ticket_cc import send_ticket_cc_created_notification
+
+        doc = types.SimpleNamespace(
+            name="51710",
+            subject="Test CC email",
+            raised_by="customer@example.com",
+            via_customer_portal=1,
+            custom_cc_emails="customer@example.com, Owner@Example.com",
+        )
+        frappe_mock.reset_mock()
+        frappe_mock.utils.get_url.return_value = "https://haravan.help"
+
+        send_ticket_cc_created_notification(doc)
+
+        frappe_mock.sendmail.assert_called_once()
+        kwargs = frappe_mock.sendmail.call_args.kwargs
+        self.assertEqual(kwargs["recipients"], ["owner@example.com"])
+        self.assertEqual(kwargs["subject"], "[Ticket #51710] Test CC email")
+        self.assertEqual(kwargs["reference_doctype"], "HD Ticket")
+        self.assertEqual(kwargs["reference_name"], "51710")
+
+    def test_created_notification_skips_native_email_ticket_ack_path(self):
+        from login_with_haravan.engines.ticket_cc import send_ticket_cc_created_notification
+
+        doc = types.SimpleNamespace(
+            name="EMAIL-1",
+            subject="Email ticket",
+            raised_by="customer@example.com",
+            via_customer_portal=0,
+            custom_cc_emails="owner@example.com",
+        )
+        frappe_mock.reset_mock()
+
+        send_ticket_cc_created_notification(doc)
+
+        frappe_mock.sendmail.assert_not_called()
+
 
 class TicketCCMixinTest(unittest.TestCase):
     def setUp(self):

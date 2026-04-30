@@ -1,7 +1,8 @@
-"""Ticket-level CC email normalization and merge helpers."""
+"""Ticket-level CC email normalization, merge, and notification helpers."""
 
 from __future__ import annotations
 
+from html import escape
 import re
 from email.utils import parseaddr
 from typing import Iterable
@@ -115,3 +116,58 @@ def validate_ticket_cc_emails(doc, method=None):
         return
 
     setattr(doc, TICKET_CC_FIELD, normalized)
+
+
+def send_ticket_cc_created_notification(doc, method=None):
+    """Notify ticket-level CC recipients when Helpdesk does not send an ack email."""
+    if not getattr(doc, "via_customer_portal", None):
+        return
+
+    raw_value = getattr(doc, TICKET_CC_FIELD, None)
+    if not raw_value:
+        return
+
+    cc_recipients = merge_cc_emails(
+        ticket_cc=raw_value,
+        recipients=getattr(doc, "raised_by", None),
+    )
+    if not cc_recipients:
+        return
+
+    import frappe
+
+    ticket_url = f"{frappe.utils.get_url()}/helpdesk/tickets/{doc.name}"
+    subject_text = getattr(doc, "subject", None) or ""
+    subject = f"[Ticket #{doc.name}] {subject_text}".strip()
+    raised_by = getattr(doc, "raised_by", None) or "N/A"
+
+    message = f"""
+    <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+        <p>Bạn được CC vào ticket hỗ trợ.</p>
+        <table style="border-collapse: collapse; width: 100%;">
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Ticket ID</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{escape(str(doc.name))}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Chủ đề</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{escape(subject_text)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Người tạo</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{escape(str(raised_by))}</td>
+            </tr>
+        </table>
+        <p>Xem ticket: <a href="{escape(ticket_url)}">{escape(ticket_url)}</a></p>
+    </div>
+    """
+
+    frappe.sendmail(
+        recipients=cc_recipients,
+        subject=subject,
+        message=message,
+        reference_doctype="HD Ticket",
+        reference_name=doc.name,
+        now=True,
+        expose_recipients="header",
+    )
