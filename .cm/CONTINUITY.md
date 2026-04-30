@@ -1,7 +1,19 @@
 # Working Memory
 
-- Active Goal: AI Reply Copilot Upgrade
-- Just Completed: Ticket CC Emails Option B implemented and shipped as `0.1.5`
+- Active Goal: GitLab Product Suggestion Labels
+- Next Actions:
+  - Export `HARAVAN_HELP_SITE`, `HARAVAN_HELP_API_KEY`, and `HARAVAN_HELP_API_SECRET`.
+  - Run `PYTHONPATH=. python3 scripts/patch_gitlab_product_suggestion_labels.py`.
+  - Smoke test the GitLab popup on a ticket with `custom_product_suggestion`.
+- Current Phase: local implementation verified; production patch pending credentials
+- Working Context: GitLab popup uses `HD Form Script` `GitLab - Ticket Issue Button`
+  and Server Script API method `haravan_helpdesk.api.gitlab_popup_v2`. Add product
+  suggestion labels by returning `default_labels` from `init`, derived from
+  `HD Ticket.custom_product_suggestion` -> `HD Ticket Product Suggestion.gitlab_labels`,
+  while preserving existing base labels `helpdesk,customer-report`.
+
+- Previous Goal: CC Email Smoke Test on haravan.help completed
+- Just Completed: Ticket CC Emails Option B implemented and production smoke-tested on `0.1.6`
   in commit `8be5a14`. Added `custom_cc_emails`
   setup for `HD Ticket`, Default template row, pure CC normalization/merge engine,
   `HD Ticket` validation hook, and `HDTicketCCMixin` for agent reply and acknowledgement
@@ -10,14 +22,15 @@
   `python3 -m compileall -q login_with_haravan` and `python3 -m pip wheel . --no-deps`
   also passed; temporary build artifacts were removed.
 - Next Actions:
-  - Deploy/migrate `login_with_haravan` so `after_migrate` creates `custom_cc_emails`
-    and loads the `HD Ticket` mixin.
+  - Keep temporary production Server Script `HD Ticket - CC Created Notification`
+    disabled while `login_with_haravan >= 0.1.6` is deployed, to avoid duplicate
+    CC created-ticket emails.
   - If the production Desk custom button remains in use, update `Onboarding - Agent Ticket Dialog`
     and `haravan_agent_create_customer_ticket` to collect/pass `custom_cc_emails`.
   - Deploy `scripts/fix_ai_assist_and_analyze_comment.py` to the live Helpdesk site when ready.
   - Smoke test `AI - Ticket Assist Menu` on a real HD Ticket with Vietnamese content.
   - Decide later whether AI drafts should stay as internal comments or fill/send the public reply composer.
-- Current Phase: ticket CC shipped to GitHub/main; production deploy/migrate remains
+- Current Phase: ticket CC source hook verified on production; PR #5 remains open for local operations/docs merge
 - Working Context: AI Reply Copilot upgrade is documented in `openspec/changes/ai-reply-copilot-upgrade/`. The patch keeps existing Desk script endpoints stable, adds up to 3 ranked reply options, auto-selects the highest-confidence option, uses richer ticket/recent-message context, and enforces Vietnamese with accents. Local `./test_gate.sh` passed after adding regression tests.
 
 - What Failed: Bulk-deleted inactive Desk scripts when the user asked to rewrite/refactor them.
@@ -36,6 +49,19 @@
 - How to Prevent: For production hotfixes, verify live app version before testing,
   and confirm the data path creates an `Email Queue` record for the ticket reference.
   Keep temporary Server Scripts disabled once the source-controlled app hook is deployed.
+- Scope: module:ticket-cc-emails
+
+- What Worked: Browser smoke test created `HD Ticket 52407` from
+  `https://haravan.help/helpdesk/tickets/new` with `raised_by=sociads@gmail.com`
+  and `custom_cc_emails=hai.minh@outlook.com`; source-controlled app `0.1.6`
+  queued `Email Queue f2ssh8b9vh`, status `Sent`, to the CC recipient.
+- Why It Worked: Production had been upgraded to `login_with_haravan 0.1.6`,
+  so the app After Insert hook handled the created-ticket CC notification. The
+  temporary `HD Ticket - CC Created Notification` Server Script was disabled to
+  prevent duplicate emails.
+- How to Prevent Regressions: For every CC smoke test, check ticket persistence,
+  `Email Queue.recipients`, and recent Error Logs. Do not count UI success alone
+  as a pass.
 - Scope: module:ticket-cc-emails
 
 - What Failed: AI reply suggestion dialog showed weak/empty drafts and Vietnamese UI/prompt copy without accents.
