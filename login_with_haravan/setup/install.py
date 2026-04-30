@@ -14,6 +14,11 @@ PROVIDER_NAME = "Haravan Account"
 HELPDESK_PRODUCT_SUGGESTION_DOCTYPE = "HD Ticket Product Suggestion"
 HELPDESK_TICKET_DOCTYPE = "HD Ticket"
 HELPDESK_TICKET_TEMPLATE = "Default"
+HELPDESK_PRODUCT_SUGGESTION_FIELDNAME = "custom_product_suggestion"
+ONBOARDING_SERVICE_INTERNAL_TYPE = "Onboarding Service"
+ONBOARDING_SERVICE_DEPENDS_ON = (
+    f'eval:doc.custom_internal_type == "{ONBOARDING_SERVICE_INTERNAL_TYPE}"'
+)
 
 HELPDESK_TICKET_CC_FIELD = {
     "fieldname": "custom_cc_emails",
@@ -32,6 +37,67 @@ HELPDESK_TICKET_CC_TEMPLATE_FIELD = {
     "hide_from_customer": 1,
     "placeholder": "abc@company.com, xyz@company.com",
 }
+
+HELPDESK_ONBOARDING_SERVICE_FIELDS = [
+    {
+        "fieldname": "custom_service_group",
+        "label": "Nhóm dịch vụ",
+        "fieldtype": "Select",
+        "insert_after": "custom_product_suggestion",
+        "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+    },
+    {
+        "fieldname": "custom_service_name",
+        "label": "Service name",
+        "fieldtype": "Select",
+        "insert_after": "custom_service_group",
+        "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+    },
+    {
+        "fieldname": "custom_service_line",
+        "label": "Service Line",
+        "fieldtype": "Select",
+        "insert_after": "custom_service_name",
+        "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+    },
+    {
+        "fieldname": "custom_service_pricing",
+        "label": "Service Pricing",
+        "fieldtype": "Currency",
+        "insert_after": "custom_service_line",
+        "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+    },
+    {
+        "fieldname": "custom_service_transaction_id",
+        "label": "Service Transaction ID",
+        "fieldtype": "Data",
+        "insert_after": "custom_service_pricing",
+        "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+    },
+    {
+        "fieldname": "custom_service_vendor",
+        "label": "Đối tác cung cấp dịch vụ",
+        "fieldtype": "Select",
+        "insert_after": "custom_service_transaction_id",
+        "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+    },
+    {
+        "fieldname": "custom_service_payment_status",
+        "label": "Trạng thái thanh toán",
+        "fieldtype": "Select",
+        "insert_after": "custom_service_vendor",
+        "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+    },
+]
+
+HELPDESK_ONBOARDING_SERVICE_TEMPLATE_FIELDS = [
+    {
+        "fieldname": field["fieldname"],
+        "required": 0,
+        "hide_from_customer": 0,
+    }
+    for field in HELPDESK_ONBOARDING_SERVICE_FIELDS
+]
 
 HELPDESK_PROFILE_CUSTOM_FIELDS = {
     "HD Customer": [
@@ -105,14 +171,18 @@ def after_install():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
     configure_helpdesk_product_suggestion_permissions()
+    configure_helpdesk_product_suggestion_customer_optional()
     configure_ticket_cc_metadata()
+    configure_onboarding_service_ticket_metadata()
 
 
 def after_migrate():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
     configure_helpdesk_product_suggestion_permissions()
+    configure_helpdesk_product_suggestion_customer_optional()
     configure_ticket_cc_metadata()
+    configure_onboarding_service_ticket_metadata()
 
 
 
@@ -290,6 +360,99 @@ def configure_ticket_cc_metadata():
         },
         "message": "Ticket CC metadata configured.",
     }
+
+
+@frappe.whitelist()
+def configure_onboarding_service_ticket_metadata():
+    """Show paid-service ticket fields only for Onboarding Service tickets."""
+    if not frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
+        return {
+            "success": True,
+            "data": {"configured": False, "reason": "doctype_missing"},
+            "message": "HD Ticket DocType is not installed.",
+        }
+
+    custom_fields_changed = []
+    template_rows_changed = []
+
+    for field in HELPDESK_ONBOARDING_SERVICE_FIELDS:
+        if _ensure_custom_field(HELPDESK_TICKET_DOCTYPE, field):
+            custom_fields_changed.append(field["fieldname"])
+
+    for row in HELPDESK_ONBOARDING_SERVICE_TEMPLATE_FIELDS:
+        if _ensure_ticket_template_field(HELPDESK_TICKET_TEMPLATE, row):
+            template_rows_changed.append(row["fieldname"])
+
+    changed = bool(custom_fields_changed or template_rows_changed)
+    if changed:
+        frappe.clear_cache(doctype=HELPDESK_TICKET_DOCTYPE)
+        frappe.clear_cache(doctype="HD Ticket Template")
+        frappe.db.commit()
+
+    return {
+        "success": True,
+        "data": {
+            "configured": True,
+            "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+            "custom_fields_changed": custom_fields_changed,
+            "template_rows_changed": template_rows_changed,
+        },
+        "message": "Onboarding service ticket metadata configured.",
+    }
+
+
+@frappe.whitelist()
+def configure_helpdesk_product_suggestion_customer_optional():
+    """Keep Product Suggestion optional on customer portal templates.
+
+    Agent-created tickets still require this field through the Desk Client Script
+    and the server-side Product Suggestion mapping script.
+    """
+    if not frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
+        return {
+            "success": True,
+            "data": {"configured": False, "reason": "doctype_missing"},
+            "message": "HD Ticket DocType is not installed.",
+        }
+
+    custom_field_changed = _ensure_product_suggestion_custom_field_optional()
+    template_row_changed = _ensure_ticket_template_field(
+        HELPDESK_TICKET_TEMPLATE,
+        {"fieldname": HELPDESK_PRODUCT_SUGGESTION_FIELDNAME, "required": 0},
+    )
+
+    if custom_field_changed or template_row_changed:
+        frappe.clear_cache(doctype=HELPDESK_TICKET_DOCTYPE)
+        frappe.clear_cache(doctype="HD Ticket Template")
+        frappe.db.commit()
+
+    return {
+        "success": True,
+        "data": {
+            "configured": True,
+            "fieldname": HELPDESK_PRODUCT_SUGGESTION_FIELDNAME,
+            "custom_field_changed": custom_field_changed,
+            "template_row_changed": template_row_changed,
+        },
+        "message": "Product Suggestion is optional for customer ticket templates.",
+    }
+
+
+def _ensure_product_suggestion_custom_field_optional() -> bool:
+    custom_field_name = (
+        f"{HELPDESK_TICKET_DOCTYPE}-{HELPDESK_PRODUCT_SUGGESTION_FIELDNAME}"
+    )
+    if not frappe.db.exists("Custom Field", custom_field_name):
+        return False
+
+    doc = frappe.get_doc("Custom Field", custom_field_name)
+    if not int(getattr(doc, "reqd", 0) or 0):
+        return False
+
+    doc.reqd = 0
+    doc.flags.ignore_permissions = True
+    doc.save(ignore_permissions=True)
+    return True
 
 
 def _ensure_custom_field(doctype: str, field: dict[str, object]) -> bool:

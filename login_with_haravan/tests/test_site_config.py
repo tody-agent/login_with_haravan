@@ -531,6 +531,143 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         self.assertTrue(template.saved)
         frappe_mock.db.commit.assert_called()
 
+    def test_setup_makes_product_suggestion_optional_for_customer_template(self):
+        from login_with_haravan.setup import install
+
+        class FakeCustomField:
+            def __init__(self):
+                self.reqd = 1
+                self.flags = MagicMock()
+                self.saved = False
+
+            def save(self, ignore_permissions=False):
+                self.saved = True
+
+        class FakeTemplateField:
+            def __init__(self):
+                self.required = 1
+                self.flags = MagicMock()
+                self.saved = False
+
+            def save(self, ignore_permissions=False):
+                self.saved = True
+
+        custom_field = FakeCustomField()
+        template_field = FakeTemplateField()
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType" and filters == "HD Ticket":
+                return True
+            if doctype == "Custom Field":
+                return "HD Ticket-custom_product_suggestion"
+            if doctype == "HD Ticket Template" and filters == "Default":
+                return True
+            if doctype == "HD Ticket Template Field":
+                return "template-row-name"
+            return None
+
+        def get_doc(doctype, name):
+            if doctype == "Custom Field":
+                return custom_field
+            if doctype == "HD Ticket Template Field":
+                return template_field
+            return MagicMock()
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.get_doc.side_effect = get_doc
+
+        result = install.configure_helpdesk_product_suggestion_customer_optional()
+
+        self.assertTrue(result["data"]["custom_field_changed"])
+        self.assertTrue(result["data"]["template_row_changed"])
+        self.assertEqual(custom_field.reqd, 0)
+        self.assertEqual(template_field.required, 0)
+        self.assertTrue(custom_field.saved)
+        self.assertTrue(template_field.saved)
+        frappe_mock.db.commit.assert_called()
+
+    def test_setup_configures_onboarding_service_fields_as_conditional(self):
+        from login_with_haravan.setup import install
+
+        class FakeCustomField:
+            def __init__(self):
+                self.values = {}
+                self.flags = MagicMock()
+                self.inserted = False
+
+            def update(self, values):
+                self.values.update(values)
+                for key, value in values.items():
+                    setattr(self, key, value)
+
+            def insert(self, ignore_permissions=False):
+                self.inserted = True
+
+        class FakeTemplate:
+            def __init__(self):
+                self.rows = []
+                self.saved = False
+                self.flags = MagicMock()
+
+            def append(self, fieldname, row):
+                self.rows.append((fieldname, row))
+
+            def save(self, ignore_permissions=False):
+                self.saved = True
+
+        created_fields = []
+        template = FakeTemplate()
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType" and filters == "HD Ticket":
+                return True
+            if doctype == "Custom Field":
+                return None
+            if doctype == "HD Ticket Template" and filters == "Default":
+                return True
+            if doctype == "HD Ticket Template Field":
+                return None
+            return None
+
+        def new_doc(doctype):
+            if doctype == "Custom Field":
+                field = FakeCustomField()
+                created_fields.append(field)
+                return field
+            return MagicMock()
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.new_doc.side_effect = new_doc
+        frappe_mock.get_doc.return_value = template
+
+        result = install.configure_onboarding_service_ticket_metadata()
+
+        expected_fieldnames = [
+            "custom_service_group",
+            "custom_service_name",
+            "custom_service_line",
+            "custom_service_pricing",
+            "custom_service_transaction_id",
+            "custom_service_vendor",
+            "custom_service_payment_status",
+        ]
+        self.assertEqual(result["data"]["custom_fields_changed"], expected_fieldnames)
+        self.assertEqual(result["data"]["template_rows_changed"], expected_fieldnames)
+        self.assertEqual(len(created_fields), len(expected_fieldnames))
+        self.assertEqual(len(template.rows), len(expected_fieldnames))
+
+        for custom_field, fieldname in zip(created_fields, expected_fieldnames, strict=True):
+            self.assertTrue(custom_field.inserted)
+            self.assertEqual(custom_field.values["dt"], "HD Ticket")
+            self.assertEqual(custom_field.values["fieldname"], fieldname)
+            self.assertEqual(custom_field.values["depends_on"], install.ONBOARDING_SERVICE_DEPENDS_ON)
+
+        for _, row in template.rows:
+            self.assertEqual(row["hide_from_customer"], 0)
+            self.assertNotIn("depends_on", row)
+
+        frappe_mock.db.commit.assert_called()
+
 
 if __name__ == "__main__":
     unittest.main()
