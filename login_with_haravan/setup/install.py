@@ -61,10 +61,17 @@ HELPDESK_ONBOARDING_SERVICE_FIELDS = [
         "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
     },
     {
+        "fieldname": "custom_service_onboarding_phrase",
+        "label": "Service Onboarding Phrase",
+        "fieldtype": "Select",
+        "insert_after": "custom_service_line",
+        "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
+    },
+    {
         "fieldname": "custom_service_pricing",
         "label": "Service Pricing",
         "fieldtype": "Currency",
-        "insert_after": "custom_service_line",
+        "insert_after": "custom_service_onboarding_phrase",
         "depends_on": ONBOARDING_SERVICE_DEPENDS_ON,
     },
     {
