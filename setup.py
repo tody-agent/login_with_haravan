@@ -5,7 +5,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="login_with_haravan",
-    version="0.1.10",
+    version="0.1.11",
     description="Frappe x Haravan Account for Frappe Helpdesk",
     author="Haravan",
     packages=find_packages(),
