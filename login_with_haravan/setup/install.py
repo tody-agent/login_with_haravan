@@ -201,6 +201,7 @@ def configure_haravan_social_login(
     client_secret: str | None = None,
     enable: int | str | bool | None = None,
 ):
+    frappe.only_for("System Manager")
     explicit_client_secret = client_secret
     doc = _get_or_create_social_login_key()
     credentials = _get_configured_credentials(doc)
@@ -307,6 +308,7 @@ def _get_configured_credentials(provider_doc=None) -> dict:
 @frappe.whitelist()
 def configure_customer_profile_metadata():
     """Create custom fields used by Bitrix on-demand customer profiles."""
+    frappe.only_for("System Manager")
     created = []
     for dt, fields in HELPDESK_PROFILE_CUSTOM_FIELDS.items():
         if not frappe.db.exists("DocType", dt):
@@ -335,6 +337,7 @@ def configure_customer_profile_metadata():
 @frappe.whitelist()
 def configure_ticket_cc_metadata():
     """Create ticket-level CC metadata used by agent-created tickets and replies."""
+    frappe.only_for("System Manager")
     if not frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
         return {
             "success": True,
@@ -372,6 +375,7 @@ def configure_ticket_cc_metadata():
 @frappe.whitelist()
 def configure_onboarding_service_ticket_metadata():
     """Show paid-service ticket fields only for Onboarding Service tickets."""
+    frappe.only_for("System Manager")
     if not frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
         return {
             "success": True,
@@ -415,6 +419,7 @@ def configure_helpdesk_product_suggestion_customer_optional():
     Agent-created tickets still require this field through the Desk Client Script
     and the server-side Product Suggestion mapping script.
     """
+    frappe.only_for("System Manager")
     if not frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
         return {
             "success": True,
@@ -522,6 +527,7 @@ def _ensure_ticket_template_field(template: str, row: dict[str, object]) -> bool
 @frappe.whitelist()
 def configure_helpdesk_product_suggestion_permissions():
     """Allow every user to read/select product suggestions on the ticket form."""
+    frappe.only_for("System Manager")
     if not frappe.db.exists("DocType", HELPDESK_PRODUCT_SUGGESTION_DOCTYPE):
         return {
             "success": True,
