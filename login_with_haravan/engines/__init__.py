@@ -1,1 +1,1 @@
-"""Pure business logic for Login With Haravan."""
+"""Pure business logic for Frappe x Haravan."""

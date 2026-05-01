@@ -1,1 +1,1 @@
-"""Login With Haravan module."""
+"""Frappe x Haravan module."""

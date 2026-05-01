@@ -58,11 +58,7 @@ def product_suggestion_labels(ticket_name):
 
 
 def gitlab_default_labels(ticket_name):
-    labels = split_labels(BASE_GITLAB_LABELS)
-    for label in product_suggestion_labels(ticket_name):
-        if label not in labels:
-            labels.append(label)
-    return ",".join(labels)
+    return ",".join(product_suggestion_labels(ticket_name))
 '''
 
 
@@ -97,14 +93,28 @@ def patch_server_script(script: str) -> str:
 
     patched = patched.replace(
         '    labels = as_text(frappe.form_dict.get("labels") or "helpdesk,customer-report")\n',
+        '    labels = as_text(frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name))\n',
+    )
+    patched = patched.replace(
         '    labels = as_text(frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name) or BASE_GITLAB_LABELS)\n',
+        '    labels = as_text(frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name))\n',
+    )
+    patched = patched.replace(
+        'def gitlab_default_labels(ticket_name):\n'
+        '    labels = split_labels(BASE_GITLAB_LABELS)\n'
+        '    for label in product_suggestion_labels(ticket_name):\n'
+        '        if label not in labels:\n'
+        '            labels.append(label)\n'
+        '    return ",".join(labels)\n',
+        'def gitlab_default_labels(ticket_name):\n'
+        '    return ",".join(product_suggestion_labels(ticket_name))\n',
     )
 
     required = [
         "PRODUCT_SUGGESTION_DOCTYPE",
         "def gitlab_default_labels(ticket_name):",
         '"default_labels": gitlab_default_labels(ticket_name)',
-        "gitlab_default_labels(ticket_name) or BASE_GITLAB_LABELS",
+        'frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name)',
     ]
     missing = [text for text in required if text not in patched]
     if missing:
@@ -120,7 +130,7 @@ def patch_form_script(script: str) -> str:
         patched = patched.replace(
             "        const defDesc = plainText(ticket.description || doc.description || doc.content || '');\n",
             "        const defDesc = plainText(ticket.description || doc.description || doc.content || '');\n"
-            "        const defLabels = init.default_labels || 'helpdesk,customer-report';\n",
+            "        const defLabels = init.default_labels || '';\n",
         )
 
     patched = patched.replace(
@@ -131,9 +141,13 @@ def patch_form_script(script: str) -> str:
         '                                value="helpdesk,customer-report"\n',
         '                                value="${esc(defLabels)}"\n',
     )
+    patched = patched.replace(
+        "        const defLabels = init.default_labels || 'helpdesk,customer-report';\n",
+        "        const defLabels = init.default_labels || '';\n",
+    )
 
     required = [
-        "const defLabels = init.default_labels || 'helpdesk,customer-report';",
+        "const defLabels = init.default_labels || '';",
         "labels: document.getElementById(`${id}-labels`)?.value || defLabels",
         'value="${esc(defLabels)}"',
     ]

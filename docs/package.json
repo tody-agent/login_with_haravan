@@ -1,7 +1,7 @@
 {
   "name": "login-with-haravan-docs",
   "version": "1.0.0",
-  "description": "Tài liệu cho Login With Haravan",
+  "description": "Tài liệu cho Frappe x Haravan",
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",

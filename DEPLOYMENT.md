@@ -88,7 +88,7 @@ Use:
 
 ```text
 Social Login Provider: Custom
-Provider Name: Haravan Account
+Provider Name: Frappe x Haravan
 Enable Social Login: checked
 Client ID: HARAVAN_CLIENT_ID
 Client Secret: leave blank if haravan_account_login contains client_secret
@@ -114,7 +114,7 @@ Auth URL Data:
 ## 5. Verify
 
 1. Go to `https://haravan.help/login`.
-2. Click `Login with Haravan Account`.
+2. Click `Frappe x Haravan`.
 3. Complete Haravan login.
 4. Confirm Frappe redirects after login.
 5. In Desk, open `Haravan Account Link`.

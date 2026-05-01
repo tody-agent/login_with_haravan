@@ -19,7 +19,7 @@ class TestGitLabProductLabelsPatch(unittest.TestCase):
 
         patched = patch_form_script(source)
 
-        self.assertIn("const defLabels = init.default_labels || 'helpdesk,customer-report';", patched)
+        self.assertIn("const defLabels = init.default_labels || '';", patched)
         self.assertIn("labels: document.getElementById(`${id}-labels`)?.value || defLabels", patched)
         self.assertIn('value="${esc(defLabels)}"', patched)
         self.assertNotIn('value="helpdesk,customer-report"', patched)
@@ -58,7 +58,8 @@ elif action == "create":
         self.assertIn('frappe.db.get_value(TICKET_DTYPE, ticket_name, PRODUCT_SUGGESTION_FIELD)', patched)
         self.assertIn('frappe.db.get_value(PRODUCT_SUGGESTION_DOCTYPE, suggestion, PRODUCT_SUGGESTION_LABEL_FIELD)', patched)
         self.assertIn('"default_labels": gitlab_default_labels(ticket_name)', patched)
-        self.assertIn('labels = as_text(frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name) or BASE_GITLAB_LABELS)', patched)
+        self.assertIn('labels = as_text(frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name))', patched)
+        self.assertNotIn("split_labels(BASE_GITLAB_LABELS)", patched)
 
 
 if __name__ == "__main__":

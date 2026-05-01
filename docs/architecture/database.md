@@ -1,45 +1,85 @@
 ---
 title: Cơ sở dữ liệu
-description: Cấu trúc cơ sở dữ liệu của ứng dụng Login With Haravan
-keywords: database, schema, doctype, frappe
+description: Sơ đồ cơ sở dữ liệu — các DocType và Custom Fields của Frappe x Haravan
+keywords: database, cơ sở dữ liệu, schema, doctype, frappe
 robots: index, follow
 ---
 
 # 🗄️ Cơ sở dữ liệu
 
 :::info Tóm tắt
-Dữ liệu của Login With Haravan chủ yếu mở rộng từ các DocType có sẵn của Frappe/Helpdesk, cộng thêm `Haravan Account Link` để quản lý liên kết.
+Dữ liệu của Frappe x Haravan chủ yếu mở rộng từ các DocType có sẵn của Frappe/Helpdesk, cộng thêm hai DocType tuỳ chỉnh: `Haravan Account Link` và `HD Customer Data`.
 :::
 
-## 1. Haravan Account Link (Custom DocType)
-Lưu trữ thông tin liên kết giữa người dùng và tổ chức Haravan.
-- `user` (Link - User): User ID trong Frappe.
-- `haravan_userid` (Data): ID của người dùng trên Haravan.
-- `haravan_orgid` (Data): ID tổ chức trên Haravan.
-- `haravan_orgname` (Data): Tên tổ chức.
-- `hd_customer` (Link - HD Customer): Khách hàng tương ứng trên Helpdesk.
+## 1. Haravan Account Link (DocType tuỳ chỉnh)
 
-## 2. HD Customer (Được mở rộng)
-Ứng dụng thêm các **Custom Fields** vào `HD Customer`:
-- `custom_haravan_orgid` (Int): Tránh trùng lặp, định danh duy nhất org.
-- `custom_myharavan` (Data): Tên miền phụ (subdomain).
-- `custom_bitrix_company_id` (Data): ID công ty trong Bitrix.
-- `custom_bitrix_company_url` (Data): Link mở công ty trong Bitrix.
-- `custom_bitrix_match_confidence` (Percent): Độ tin cậy khi liên kết dữ liệu.
-- `custom_bitrix_sync_status` (Data): Trạng thái đồng bộ hồ sơ.
-- `custom_bitrix_last_synced_at` (Datetime): Lần lấy dữ liệu Bitrix gần nhất.
+Lưu thông tin liên kết giữa user Frappe và tổ chức Haravan. Mỗi lần đăng nhập, hệ thống upsert bản ghi này.
 
-## 3. Contact (Được tự động tạo)
-- `email_id`: Email từ Haravan.
-- Lồng với `HD Customer` trong child table `links`.
-- Có thể lưu `custom_bitrix_contact_id`, `custom_bitrix_contact_url`, `custom_bitrix_last_synced_at` nếu match được Bitrix Contact.
+| Trường | Kiểu | Mô tả |
+|--------|------|-------|
+| `user` | Link → User | User ID trong Frappe |
+| `haravan_userid` | Data | ID người dùng trên Haravan |
+| `haravan_orgid` | Data | ID tổ chức trên Haravan |
+| `haravan_orgname` | Data | Tên tổ chức |
+| `hd_customer` | Link → HD Customer | Khách hàng tương ứng trên Helpdesk |
 
-## 4. HD Customer Data (Custom DocType)
-Lưu snapshot có tổ chức cho dữ liệu lấy theo nhu cầu từ Bitrix.
-- `hd_customer` (Link - HD Customer)
-- `contact` (Link - Contact)
-- `source`: `bitrix`
-- `entity_type`: `company` hoặc `contact`
-- `external_id`, `external_url`
-- `summary_json`: Dữ liệu tóm tắt đã chuẩn hóa để hiển thị trong Customer Profile.
-- `match_key`, `confidence`, `last_synced_at`
+## 2. HD Customer (DocType mở rộng)
+
+Ứng dụng thêm các **Custom Fields** vào `HD Customer` thông qua hook `after_migrate`:
+
+### Nhóm Haravan
+
+| Trường | Kiểu | Mô tả |
+|--------|------|-------|
+| `custom_haravan_orgid` | Int | Định danh duy nhất tổ chức — tránh trùng lặp |
+| `custom_myharavan` | Data | Tên miền phụ (subdomain) `.myharavan.com` |
+
+### Nhóm Bitrix
+
+| Trường | Kiểu | Mô tả |
+|--------|------|-------|
+| `custom_bitrix_company_id` | Data | ID công ty trong Bitrix |
+| `custom_bitrix_company_url` | Data | Liên kết mở công ty trong Bitrix |
+| `custom_bitrix_match_confidence` | Percent | Độ tin cậy khi liên kết dữ liệu |
+| `custom_bitrix_sync_status` | Data | Trạng thái đồng bộ hồ sơ |
+| `custom_bitrix_last_synced_at` | Datetime | Lần lấy dữ liệu Bitrix gần nhất |
+
+## 3. Contact (DocType tự động tạo)
+
+Khi người dùng đăng nhập, hệ thống tự động tạo hoặc cập nhật Contact:
+
+| Trường | Mô tả |
+|--------|-------|
+| `email_id` | Email từ Haravan |
+| `links` | Liên kết với `HD Customer` qua child table (chỉ cho Owner/Admin) |
+| `custom_bitrix_contact_id` | ID contact Bitrix (nếu match được) |
+| `custom_bitrix_contact_url` | Liên kết mở contact trong Bitrix |
+| `custom_bitrix_last_synced_at` | Lần đồng bộ Bitrix gần nhất |
+
+## 4. HD Customer Data (DocType tuỳ chỉnh)
+
+Lưu snapshot dữ liệu lấy theo nhu cầu từ Bitrix — phục vụ panel Customer Profile của agent.
+
+| Trường | Kiểu | Mô tả |
+|--------|------|-------|
+| `hd_customer` | Link → HD Customer | Khách hàng liên quan |
+| `contact` | Link → Contact | Contact liên quan |
+| `source` | Data | Nguồn dữ liệu (VD: `bitrix`) |
+| `entity_type` | Data | Loại thực thể: `company` hoặc `contact` |
+| `external_id` | Data | ID trên hệ thống nguồn |
+| `external_url` | Data | Liên kết đến hệ thống nguồn |
+| `summary_json` | Long Text | Dữ liệu tóm tắt đã chuẩn hóa (JSON) |
+| `match_key` | Data | Khóa dùng để match |
+| `confidence` | Percent | Độ tin cậy match |
+| `last_synced_at` | Datetime | Thời điểm đồng bộ gần nhất |
+
+## 5. Sơ đồ quan hệ
+
+```mermaid
+erDiagram
+    User ||--o{ HaravanAccountLink : "có nhiều"
+    HaravanAccountLink }o--|| HDCustomer : "liên kết"
+    HDCustomer ||--o{ Contact : "có nhiều"
+    HDCustomer ||--o{ HDCustomerData : "có nhiều"
+    Contact ||--o{ HDCustomerData : "có nhiều"
+```

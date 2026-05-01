@@ -1,1 +1,1 @@
-"""DocTypes for Login With Haravan."""
+"""DocTypes for Frappe x Haravan."""

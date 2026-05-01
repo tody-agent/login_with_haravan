@@ -31,7 +31,7 @@ Luồng chính của Haravan Helpdesk gồm 5 lớp:
 
 ```mermaid
 flowchart TD
-  A["Customer mở /helpdesk"] --> B["Login with Haravan Account"]
+  A["Customer mở /helpdesk"] --> B["Frappe x Haravan Account"]
   B --> C["OAuth callback: login_with_haravan.oauth.login_via_haravan"]
   C --> D["Upsert User, Contact, HD Customer"]
   D --> E["Haravan Account Link"]
@@ -355,7 +355,7 @@ Kết quả chỉ được phép trả trạng thái kiểu `configured`, `sourc
 Cách ưu tiên là để khách tự đăng nhập bằng Haravan Account:
 
 1. Khách mở Helpdesk portal.
-2. Bấm `Login with Haravan Account`.
+2. Bấm `Frappe x Haravan Account`.
 3. Sau callback, hệ thống tự tạo/cập nhật `User`, `Contact`, `HD Customer`, `Haravan Account Link`.
 4. Kiểm tra `Haravan Account Link` có `hd_customer`.
 5. Tạo ticket test để xác nhận ticket có `customer`.

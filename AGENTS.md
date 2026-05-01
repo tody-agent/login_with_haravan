@@ -1,8 +1,8 @@
-# AGENTS.md - Login With Haravan
+# AGENTS.md - Frappe x Haravan
 
 ## Project Purpose
 
-This repository is a standalone Frappe custom app that adds "Login with Haravan Account" to Frappe Helpdesk.
+This repository is a standalone Frappe custom app that adds "Frappe x Haravan" account login to Frappe Helpdesk.
 
 Primary public production domain:
 
@@ -39,7 +39,7 @@ Do not modify Frappe core or Helpdesk core for this integration.
 - Frappe app/module name must stay `login_with_haravan`.
 - Python package metadata must also use `login_with_haravan`, not `login-with-haravan`.
 - Provider DocType name is `haravan_account`.
-- Provider display name is `Haravan Account`.
+- Provider display name is `Frappe x Haravan`.
 - OAuth callback endpoint is:
 
 ```text

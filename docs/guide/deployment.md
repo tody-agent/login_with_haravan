@@ -1,78 +1,90 @@
 ---
-title: Quy trình Triển khai (Deployment Workflow)
-description: Hướng dẫn chi tiết quy trình viết code, đẩy lên GitHub và deploy lên Frappe Cloud.
-keywords: deployment, workflow, github, frappe cloud, migrate
+title: Triển khai lên Production
+description: Quy trình end-to-end từ viết code, đẩy lên GitHub, đến deploy lên Frappe Cloud.
+keywords: triển khai, deployment, github, frappe cloud, migrate
 robots: index, follow
 ---
 
-# 🚀 Quy trình Triển khai (Deployment Workflow)
+# 🚀 Triển khai lên Production
 
 :::info Mục tiêu
-Tài liệu này hướng dẫn chi tiết quy trình End-to-End từ lúc Developer viết code/sửa app ở máy cá nhân (Local), đẩy code lên **GitHub**, cho đến việc cập nhật và deploy ứng dụng đó lên **Frappe Cloud**.
+Hướng dẫn quy trình end-to-end từ lúc Developer viết code trên máy cá nhân, đẩy lên GitHub, đến cập nhật và deploy ứng dụng trên Frappe Cloud.
 :::
 
-## 1. Giai đoạn 1: Lập trình và Cập nhật App (Local)
+## Giai đoạn 1: Lập trình & Kiểm thử (Local)
 
-Mọi quá trình phát triển (viết tính năng mới, fix bug, thêm Custom Fields) đều phải được thực hiện và kiểm thử trên môi trường local trước.
+### 1.1. Viết code
 
-### 1.1. Viết Code
-- **Logic & API:** Thay đổi hoặc viết mới tại thư mục `login_with_haravan/engines/` hoặc `oauth.py`.
-- **Database Schema:** Nếu cần thêm trường dữ liệu (Custom Fields) vào `HD Customer`, hãy định nghĩa chúng trong `login_with_haravan/setup/install.py` thông qua hook `after_migrate`. Việc này đảm bảo khi deploy lên production, lệnh migrate sẽ tự động tạo bảng mà không cần thao tác tay.
+- **Logic & API:** Viết mới hoặc sửa tại `login_with_haravan/engines/` hoặc `oauth.py`.
+- **Database Schema:** Nếu cần thêm Custom Field vào `HD Customer`, định nghĩa trong `login_with_haravan/setup/install.py` qua hook `after_migrate`. Khi deploy, lệnh migrate sẽ tự động tạo trường mà không cần thao tác tay.
 
-### 1.2. Kiểm thử (Testing)
-Trước khi push code, bạn bắt buộc phải chạy bộ test cục bộ để tránh làm hỏng các luồng OAuth hiện tại:
+### 1.2. Kiểm thử
+
+Trước khi push code, **bắt buộc** chạy test cục bộ:
+
 ```bash
 # Chạy Unit Tests
 PYTHONPATH=. python3 -m unittest discover -s login_with_haravan/tests -v
 ```
-*(Nếu source code có file `./test_gate.sh`, hãy chạy nó).*
 
----
+Nếu source code có `./test_gate.sh`, hãy chạy nó để kiểm tra đầy đủ hơn (lint, compile, wheel build).
 
-## 2. Giai đoạn 2: Quản lý Phiên bản (Đẩy lên GitHub)
+## Giai đoạn 2: Quản lý phiên bản (GitHub)
 
-Frappe Cloud hoạt động dựa trên cơ chế kéo code (pull) trực tiếp từ kho lưu trữ GitHub. Do đó, việc cập nhật GitHub là bắt buộc.
+Frappe Cloud kéo code trực tiếp từ GitHub, do đó việc cập nhật GitHub là bắt buộc.
 
-### 2.1. Cập nhật mã nguồn
-Sau khi code chạy ổn định trên local:
+### 2.1. Ship code
+
+Sau khi test pass trên local:
+
 ```bash
 npm run ship
 ```
 
-`ship.sh` sẽ chạy theo workflow của repo: test gate, push nhánh hiện tại, merge về `main`, rồi push `main`. Không push trực tiếp lên `main` khi đang làm feature/fix branch.
+Lệnh `ship.sh` sẽ tự động:
+1. Chạy test gate (pre-push hook)
+2. Push nhánh hiện tại lên remote
+3. Merge về `main`
+4. Push `main`
 
----
+:::warning Quy tắc nhánh
+Không push trực tiếp lên `main` khi đang làm feature/fix branch. Luôn dùng `npm run ship` để đảm bảo an toàn.
+:::
 
-## 3. Giai đoạn 3: Triển khai trên Frappe Cloud
+## Giai đoạn 3: Triển khai trên Frappe Cloud
 
-Frappe Cloud chia làm 2 cấp độ: **Bench** (Nơi chứa mã nguồn của các App) và **Site** (Nơi lưu database của từng khách hàng).
+Frappe Cloud chia làm 2 cấp: **Bench** (chứa mã nguồn App) và **Site** (chứa database từng khách hàng).
 
-### 3.1. Thêm App mới vào Frappe Cloud (Dành cho cài đặt lần đầu)
-Nếu app `login_with_haravan` chưa từng có mặt trên Frappe Cloud:
-1. Đăng nhập vào [Frappe Cloud Dashboard](https://frappecloud.com/dashboard).
-2. Chuyển đến tab **Apps** trên thanh điều hướng bên trái -> Chọn **New App**.
-3. Chọn nhà cung cấp là **GitHub** -> Tìm repo `tody-agent/login_with_haravan` và chọn nhánh `main`.
-4. Nhấn **Validate** để Frappe Cloud kiểm tra tính hợp lệ của App (file `hooks.py`, `setup.py`).
-5. Thêm App này vào một **Bench** cụ thể đang chạy phiên bản Frappe Framework tương ứng (ví dụ v15).
+### 3.1. Thêm App lần đầu
 
-### 3.2. Cập nhật (Update) App đã có
-Khi bạn đã push code mới lên GitHub, bạn cần báo cho Bench biết để tải code về:
+Nếu `Frappe x Haravan` chưa có trên Frappe Cloud:
+
+1. Đăng nhập [Frappe Cloud Dashboard](https://frappecloud.com/dashboard).
+2. Vào tab **Apps** → chọn **New App**.
+3. Chọn **GitHub** → tìm repo `tody-agent/login_with_haravan`, nhánh `main`.
+4. Nhấn **Validate** để Frappe Cloud kiểm tra (`hooks.py`, `setup.py`).
+5. Thêm App vào Bench đang chạy phiên bản Frappe tương ứng.
+
+### 3.2. Cập nhật App đã có
+
 1. Mở Frappe Cloud Dashboard.
-2. Truy cập vào **Benches** -> Chọn Bench chứa app của bạn.
+2. Vào **Benches** → chọn Bench chứa app.
 3. Chuyển sang tab **Apps**.
-4. Nhấn vào nút **Update** (hoặc Fetch Updates) để Bench lấy (pull) commit mới nhất từ nhánh `main` của GitHub về.
+4. Nhấn **Update** (hoặc Fetch Updates) để Bench pull commit mới nhất từ `main`.
 
-### 3.3. Deploy Migration cho Bản App mới (Site Update)
-Sau khi Bench đã có mã nguồn mới, cơ sở dữ liệu trên Site vẫn là phiên bản cũ. Bạn phải chạy tiến trình **Migrate**:
-1. Từ Frappe Cloud, chuyển đến tab **Sites**.
+### 3.3. Chạy Migration cho Site
+
+Sau khi Bench có mã nguồn mới, database trên Site vẫn là phiên bản cũ. Cần chạy **Migrate**:
+
+1. Từ Frappe Cloud, vào tab **Sites**.
 2. Chọn site đích (ví dụ: `haravandesk.s.frappe.cloud`).
-3. Ở góc phải trên cùng, nhấn nút **Update** (Đôi khi nút này hiển thị tên là Deploy hoặc Migrate).
-4. **Tiến trình này sẽ:**
+3. Nhấn nút **Update** (hoặc Deploy / Migrate).
+4. Tiến trình sẽ:
    - Đưa site vào chế độ bảo trì (Maintenance Mode).
    - Cập nhật mã nguồn mới nhất từ Bench.
-   - Chạy lệnh `bench migrate`: Lệnh này sẽ kích hoạt hook `after_migrate` trong file `install.py` của bạn để tạo/xóa các bảng DB mới.
-   - Dọn dẹp Cache và khởi động lại dịch vụ.
+   - Chạy `bench migrate` — kích hoạt hook `after_migrate` trong `install.py` để tạo/cập nhật bảng DB.
+   - Dọn cache và khởi động lại dịch vụ.
 
-:::tip Kiểm tra Lịch sử Deploy
-Nếu sau khi Update mà tính năng mới không chạy, hãy vào tab **Jobs** của Site đó trên Frappe Cloud để xem log chi tiết của tiến trình `bench migrate` xem có lỗi cú pháp Python hay lỗi SQL nào bị từ chối không.
+:::tip Kiểm tra lịch sử Deploy
+Nếu sau Update mà tính năng mới không chạy, vào tab **Jobs** của Site trên Frappe Cloud để xem log chi tiết `bench migrate` — tìm lỗi cú pháp Python hoặc lỗi SQL bị từ chối.
 :::

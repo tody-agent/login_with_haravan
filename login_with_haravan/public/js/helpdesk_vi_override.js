@@ -15,6 +15,8 @@
   var ROUTE_POLL_MS = 800;
 
   var TARGET_ROUTES = {
+    "/helpdesk": true,
+    "/helpdesk/tickets": true,
     "/helpdesk/my-tickets": true,
     "/helpdesk/my-tickets/new": true,
     "/my-tickets": true,
@@ -41,8 +43,6 @@
     "[data-haravan-no-translate]",
     "[data-haravan-user-content]",
     "[data-user-content]",
-    "a[href*='/helpdesk/my-tickets/']:not([href$='/new'])",
-    "a[href*='/my-tickets/']:not([href$='/new'])",
   ].join(",");
 
   var TEXT_SKIP_SELECTOR = [
@@ -54,7 +54,7 @@
 
   var TRANSLATIONS = {
     "Helpdesk": "Trung tâm hỗ trợ",
-    "Tickets": "Danh sách yêu cầu",
+    "Tickets": "Yêu cầu hỗ trợ",
     "Ticket": "Yêu cầu",
     "My Tickets": "Yêu cầu của tôi",
     "New Ticket": "Tạo yêu cầu mới",
@@ -67,7 +67,11 @@
     "View": "Chế độ xem",
     "Default": "Mặc định",
 
-    "Create": "Tạo yêu cầu",
+    "Create": "Tạo",
+    "CREATE": "Tạo",
+    "create": "Tạo",
+    "+ Create": "Tạo",
+    "Create Ticket": "Tạo yêu cầu",
     "Submit": "Gửi",
     "Save": "Lưu",
     "Cancel": "Hủy",
@@ -243,6 +247,13 @@
     "Invalid value": "Giá trị không hợp lệ",
   };
 
+  var TRANSLATIONS_LC = {};
+  for (var key in TRANSLATIONS) {
+    if (Object.prototype.hasOwnProperty.call(TRANSLATIONS, key)) {
+      TRANSLATIONS_LC[key.toLowerCase()] = TRANSLATIONS[key];
+    }
+  }
+
   var UNIT_TRANSLATIONS = {
     second: "giây",
     minute: "phút",
@@ -264,7 +275,11 @@
   }
 
   function isTargetRoute() {
-    return Boolean(TARGET_ROUTES[normalizePath(window.location.pathname)]);
+    var currentPath = normalizePath(window.location.pathname);
+    if (TARGET_ROUTES[currentPath]) return true;
+    if (currentPath.indexOf("/helpdesk") === 0) return true;
+    if (currentPath.indexOf("/my-tickets") === 0) return true;
+    return false;
   }
 
   function safeLocalStorageGet(key) {
@@ -367,7 +382,7 @@
   }
 
   function normalizeText(value) {
-    return String(value || "").replace(/\s+/g, " ").trim();
+    return String(value || "").replace(/[\s\u200B-\u200D\uFEFF]+/g, " ").trim();
   }
 
   function preserveOuterWhitespace(original, translated) {
@@ -438,14 +453,29 @@
   function translateTextValue(text) {
     var normalized = normalizeText(text);
     if (!normalized) return "";
-    return (
-      TRANSLATIONS[normalized] ||
-      translateRelativeTime(normalized) ||
-      translateValidationText(normalized) ||
-      translateSelectionText(normalized) ||
-      translateExportText(normalized) ||
-      ""
-    );
+
+    var match = TRANSLATIONS[normalized] ||
+                TRANSLATIONS_LC[normalized.toLowerCase()] ||
+                translateRelativeTime(normalized) ||
+                translateValidationText(normalized) ||
+                translateSelectionText(normalized) ||
+                translateExportText(normalized);
+
+    if (match) return match;
+
+    // Handle optional trailing asterisk for mandatory fields (e.g. "Ticket Type *")
+    if (normalized.slice(-1) === "*") {
+      var baseText = normalizeText(normalized.slice(0, -1));
+      var baseMatch = TRANSLATIONS[baseText] ||
+                      TRANSLATIONS_LC[baseText.toLowerCase()] ||
+                      translateRelativeTime(baseText) ||
+                      translateValidationText(baseText) ||
+                      translateSelectionText(baseText) ||
+                      translateExportText(baseText);
+      if (baseMatch) return baseMatch + " *";
+    }
+
+    return "";
   }
 
   function shouldSkipForText(node) {

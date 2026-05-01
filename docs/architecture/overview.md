@@ -1,44 +1,57 @@
 ---
 title: Kiến trúc Hệ thống
-description: Chi tiết kiến trúc ứng dụng Login With Haravan
-keywords: architecture, frappe 7-layer, haravan oauth
+description: Tổng quan kiến trúc 7-Layer Frappe cho ứng dụng Frappe x Haravan
+keywords: kiến trúc, architecture, 7-layer, frappe, haravan
 robots: index, follow
 ---
 
 # 🏗️ Kiến trúc Hệ thống
 
 :::info Tóm tắt
-Ứng dụng tuân thủ nghiêm ngặt mô hình kiến trúc **7-Layer của Frappe**. Việc tích hợp không thay đổi core của Frappe hay Helpdesk.
+Ứng dụng tuân thủ cấu trúc **7-Layer Frappe** — mỗi lớp có trách nhiệm riêng, không vi phạm ranh giới.
 :::
 
-## 1. Sơ đồ Kiến trúc
+## Sơ đồ 7 lớp
 
 ```mermaid
-graph TD
-    A[Trình duyệt Người dùng] -->|Click Login| B(Frappe Login Page)
-    B -->|Chuyển hướng OAuth| C{Haravan Accounts}
-    C -->|Xác thực thành công| D[Frappe OAuth Callback]
-    D -->|Fetch Token & UserInfo| C
-    D --> E[Xử lý Dữ liệu - Engines]
-    E --> F[(Frappe Database)]
-    E -->|Tạo/Cập nhật| G[HD Customer & Contact]
+graph TB
+    L1["1. DocType Schema<br/>(JSON definition)"]
+    L2["2. Controller<br/>(Python class)"]
+    L3["3. Engine<br/>(Business logic)"]
+    L4["4. Whitelist API<br/>(Public endpoints)"]
+    L5["5. Hooks<br/>(Event binding)"]
+    L6["6. Frontend<br/>(JS, CSS)"]
+    L7["7. Setup / Install<br/>(Migration scripts)"]
+
+    L1 --> L2 --> L3
+    L3 --> L4
+    L5 --> L3
+    L6 --> L4
+    L7 --> L1
 ```
 
-## 2. Các Lớp Kiến trúc (7-Layer Frappe)
+## Chi tiết từng lớp
 
-### 2.1. Doctype Schema (`login_with_haravan/doctype/`)
-Chứa định nghĩa cho các DocType tùy chỉnh, ví dụ như `Haravan Account Link` để ánh xạ giữa user Frappe và tổ chức Haravan.
+| Lớp | Thư mục / File | Vai trò trong Frappe x Haravan |
+|-----|---------------|-------------------------------|
+| **1. DocType Schema** | `login_with_haravan/login_with_haravan/doctype/` | Định nghĩa DocType `haravan_account`, `haravan_account_link` |
+| **2. Controller** | `doctype/*/haravan_account.py` | Xử lý lifecycle event của DocType (before_save, validate, v.v.) |
+| **3. Engine** | `login_with_haravan/engines/` | Logic nghiệp vụ thuần túy — `sync_helpdesk.py` chứa `upsert_hd_customer`, `create_contact`, `link_account` |
+| **4. Whitelist API** | `login_with_haravan/oauth.py` | Endpoint callback OAuth (`login_via_haravan`), API lấy org (`get_user_haravan_orgs`) |
+| **5. Hooks** | `login_with_haravan/hooks.py` | Đăng ký `web_include_js`, `after_migrate`, `doc_events` |
+| **6. Frontend** | `login_with_haravan/public/js/` | Script giao diện: Vietnamese UI override, custom buttons |
+| **7. Setup / Install** | `login_with_haravan/setup/install.py` | Tạo Social Login Key, Custom Fields khi `after_migrate` |
 
-### 2.2. Business Logic (`login_with_haravan/engines/`)
-Đây là nơi chứa toàn bộ logic xử lý:
-- `oauth_payload.py`: Giải mã JWT payload.
-- `oauth_state.py`: Quản lý state chống CSRF.
-- `haravan_api.py`: Gọi API của Haravan để lấy token và thông tin.
-- `sync_helpdesk.py`: Đồng bộ profile, tạo `HD Customer` và `Contact`.
+## Nguyên tắc thiết kế
 
-### 2.3. Controller & API (`login_with_haravan/oauth.py`)
-Endpoint chính: `/api/method/login_with_haravan.oauth.login_via_haravan`.
-Nhận request từ Haravan, điều phối logic engine và đăng nhập user.
+1. **Không sửa Frappe core** hay Frappe Helpdesk core. Mọi tuỳ biến nằm trong custom app.
+2. **Engine không import frappe trực tiếp** — nhận dữ liệu đã chuẩn hóa từ API layer.
+3. **Whitelist API là cửa ngõ duy nhất** — Client/webhook gọi API, API gọi Engine.
+4. **Hooks chỉ đăng ký, không chứa logic** — Hook trỏ đến hàm trong Engine hoặc Setup.
+5. **Setup idempotent** — `after_migrate` có thể chạy lại nhiều lần mà không gây lỗi.
 
-### 2.4. Setup & Install (`login_with_haravan/setup/install.py`)
-Tự động cấu hình các Custom Fields (ví dụ: `custom_haravan_orgid` trên `HD Customer`) trong quá trình cài đặt app.
+## Xem thêm
+
+- [Luồng OAuth & Đăng nhập](/architecture/oauth-flow) — Sequence diagram chi tiết
+- [Luồng dữ liệu & Đồng bộ](/architecture/data-flow) — Cách dữ liệu chảy qua các lớp
+- [Cơ sở dữ liệu](/architecture/database) — Schema và quan hệ giữa các DocType
