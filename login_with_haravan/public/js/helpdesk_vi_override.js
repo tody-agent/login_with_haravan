@@ -49,7 +49,6 @@
     CONTENT_SKIP_SELECTOR,
     "input",
     "textarea",
-    "select",
   ].join(",");
 
   var TRANSLATIONS = {
@@ -463,7 +462,6 @@
 
     if (match) return match;
 
-    // Handle optional trailing asterisk for mandatory fields (e.g. "Ticket Type *")
     if (normalized.slice(-1) === "*") {
       var baseText = normalizeText(normalized.slice(0, -1));
       var baseMatch = TRANSLATIONS[baseText] ||
@@ -531,25 +529,10 @@
     });
   }
 
-  function translateOptions(root) {
-    var options;
-    if (!root || !root.querySelectorAll) return;
-    options = root.querySelectorAll("option");
-    Array.prototype.forEach.call(options, function (option) {
-      var translated;
-      if (option.closest(CONTENT_SKIP_SELECTOR)) return;
-      translated = translateTextValue(option.textContent);
-      if (translated && normalizeText(option.textContent) !== translated) {
-        option.textContent = translated;
-      }
-    });
-  }
-
   function translateRoot(root) {
     if (!shouldActivate()) return;
     translateTextNodes(root || document.body);
     translateElementAttributes(root || document.body);
-    translateOptions(root || document.body);
   }
 
   function scheduleRun(root) {
