@@ -2,3 +2,7 @@
 **Vulnerability:** Setup and configuration functions in `login_with_haravan/setup/install.py` were exposed to the public API using `@frappe.whitelist()`, but lacked role-based access control.
 **Learning:** In the Frappe framework, `@frappe.whitelist()` exposes functions to the API, allowing any authenticated user to potentially trigger them. It does not enforce role checks automatically.
 **Prevention:** Always add explicit authorization checks, such as `frappe.only_for("System Manager")` or `frappe.has_permission(...)`, inside whitelisted functions that perform sensitive operations like modifying system configuration or metadata.
+## 2024-05-18 - Missing Authorization (IDOR) on Whitelisted Endpoints
+**Vulnerability:** A missing authorization check (IDOR) was found in `refresh_customer_profile` within `login_with_haravan/engines/customer_enrichment.py`. This endpoint was exposed to all authenticated users via `@frappe.whitelist()`, but lacked explicit checks to confirm the user had permission to read the specified `HD Customer` and `Contact` records.
+**Learning:** In the Frappe framework, the `@frappe.whitelist()` decorator only exposes functions to the API; it does not automatically enforce role-based or document-level access control. Explicit authorization checks must be implemented within the whitelisted function itself.
+**Prevention:** Always include explicit `frappe.has_permission(doctype, 'read', docname, throw=True)` checks for any document names passed as arguments to `@frappe.whitelist()` endpoints before retrieving or processing their data.
