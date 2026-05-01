@@ -1,11 +1,12 @@
 # Working Memory
 
-- Active Goal: GitLab Product Suggestion Labels
+- Active Goal: Fix false migration crash on Frappe Cloud
+- Just Completed: Reverted modules.txt from "Frappe x Haravan" → "Login With Haravan"
+  to fix ModuleNotFoundError during bench migrate. Shipped to main (baf259d).
 - Next Actions:
-  - Export `HARAVAN_HELP_SITE`, `HARAVAN_HELP_API_KEY`, and `HARAVAN_HELP_API_SECRET`.
-  - Run `PYTHONPATH=. python3 scripts/patch_gitlab_product_suggestion_labels.py`.
-  - Smoke test the GitLab popup on a ticket with `custom_product_suggestion`.
-- Current Phase: local implementation verified; production patch pending credentials
+  - Trigger bench migrate on Frappe Cloud (haravandesk.s.frappe.cloud) to verify fix.
+  - Monitor migration job for successful completion.
+- Current Phase: fix shipped to GitHub main; awaiting Frappe Cloud redeploy
 - Working Context: GitLab popup uses `HD Form Script` `GitLab - Ticket Issue Button`
   and Server Script API method `haravan_helpdesk.api.gitlab_popup_v2`. Add product
   suggestion labels by returning `default_labels` from `init`, derived from
@@ -78,3 +79,8 @@
 - Why It Failed: Frappe generated `redirect_uri` from the active/request domain while the app's token exchange and docs did not share one configurable callback source; Haravan requires the authorize and token `redirect_uri` values to match the Partner Dashboard exactly.
 - How to Prevent: Keep Social Login Key callback relative for automatic request-domain behavior. Use exact `haravan_account_login.redirect_uri` in Site Config only when a fixed-domain override is needed without migrate/setup.
 - Scope: module:login_with_haravan.oauth
+
+- What Failed: `bench migrate` crashed with `ModuleNotFoundError: No module named 'login_with_haravan.frappe_x_haravan'` after renaming the display title in modules.txt.
+- Why It Failed: `modules.txt` was changed from `Login With Haravan` to `Frappe x Haravan` in commit af7665c. Frappe's `sync_for()` scrubs module names via `frappe.scrub()`: `"Frappe x Haravan"` → `"frappe_x_haravan"`. But the actual Python directory is `login_with_haravan/login_with_haravan/` → scrubbed as `"login_with_haravan"`. The import `login_with_haravan.frappe_x_haravan` doesn't exist.
+- How to Prevent: **NEVER rename `modules.txt` unless you also rename the corresponding Python directory.** The value in `modules.txt` MUST scrub (via `frappe.scrub()`) to the actual directory name. Use `hooks.py → app_title` for display branding instead.
+- Scope: global (Frappe app development)
