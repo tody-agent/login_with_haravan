@@ -1,10 +1,10 @@
 app_name = "login_with_haravan"
 app_title = "Frappe x Haravan"
-app_version = "0.1.8"
-app_publisher = "Haravan"
-app_description = "Frappe x Haravan Social login bridge"
-app_email = "hi@haravan.com"
-app_license = "MIT"
+app_version = "0.1.9"
+app_publisher = "Tody"
+app_description = "Frappe x Haravan Single Sign On Module"
+app_email = "todyle@haravan.com"
+app_license = "mit"
 
 after_install = "login_with_haravan.setup.install.after_install"
 after_migrate = "login_with_haravan.setup.install.after_migrate"
@@ -13,7 +13,6 @@ web_include_js = [
     "/assets/login_with_haravan/js/haravan_login_redirect.js",
     "/assets/login_with_haravan/js/haravan_org_selector.js",
     "/assets/login_with_haravan/js/customer_profile_panel.js",
-    "/assets/login_with_haravan/js/helpdesk_vi_override.js",
 ]
 
 extend_doctype_class = {
