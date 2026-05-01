@@ -82,5 +82,5 @@
 
 - What Failed: `bench migrate` crashed with `ModuleNotFoundError: No module named 'login_with_haravan.frappe_x_haravan'` after renaming the display title in modules.txt.
 - Why It Failed: `modules.txt` was changed from `Login With Haravan` to `Frappe x Haravan` in commit af7665c. Frappe's `sync_for()` scrubs module names via `frappe.scrub()`: `"Frappe x Haravan"` → `"frappe_x_haravan"`. But the actual Python directory is `login_with_haravan/login_with_haravan/` → scrubbed as `"login_with_haravan"`. The import `login_with_haravan.frappe_x_haravan` doesn't exist.
-- How to Prevent: **NEVER rename `modules.txt` unless you also rename the corresponding Python directory.** The value in `modules.txt` MUST scrub (via `frappe.scrub()`) to the actual directory name. Use `hooks.py → app_title` for display branding instead.
+- How to Prevent: **NEVER rename `modules.txt` unless you also rename the corresponding Python directory.** The value in `modules.txt` MUST scrub (via `frappe.scrub()`) to the actual directory name. Furthermore, the `"module"` field inside any custom DocType's JSON schema file must exactly match the original string (e.g., `"Login With Haravan"`) so that Frappe's `sync_all()` loads the correct scrubbed Python module. Use `hooks.py → app_title` for display branding instead.
 - Scope: global (Frappe app development)
