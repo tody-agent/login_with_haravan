@@ -1,13 +1,13 @@
 ---
 title: Trang chủ
-description: Tài liệu Frappe x Haravan cho Frappe Helpdesk — dành cho Developer
+description: Tài liệu Login With Haravan cho Frappe Helpdesk — dành cho Developer
 keywords: haravan, frappe, helpdesk, oauth, đăng nhập, tài liệu
 robots: index, follow
 ---
 
-# 📖 Frappe x Haravan — Tài liệu Developer
+# 📖 Login With Haravan — Tài liệu Developer
 
-Chào mừng đến với tài liệu kỹ thuật của ứng dụng **Frappe x Haravan** — ứng dụng tuỳ biến (custom app) trên Frappe Framework, cung cấp OAuth "Đăng nhập bằng Frappe x Haravan" cho [Frappe Helpdesk](https://haravan.help).
+Chào mừng đến với tài liệu kỹ thuật của ứng dụng **Login With Haravan** — ứng dụng tuỳ biến (custom app) trên Frappe Framework, cung cấp OAuth "Đăng nhập bằng Login With Haravan" cho [Frappe Helpdesk](https://haravan.help).
 
 ## Bắt đầu từ đâu?
 

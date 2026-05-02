@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "login_with_haravan"
 version = "0.1.12"
-description = "Frappe x Haravan Single Sign On Module for Frappe Helpdesk"
+description = "Login With Haravan Single Sign On Module for Frappe Helpdesk"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "Frappe x Haravan" }]
+authors = [{ name = "Login With Haravan" }]
 license = "MIT"
 dependencies = [
     "requests>=2.31.0",

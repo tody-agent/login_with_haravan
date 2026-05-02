@@ -20,7 +20,7 @@ sequenceDiagram
     participant Haravan as Haravan Accounts
 
     User->>Frappe: Mở /login
-    User->>Frappe: Nhấn "Frappe x Haravan Account"
+    User->>Frappe: Nhấn "Login with Haravan Account"
     Frappe->>Haravan: GET /connect/authorize (client_id, scope, redirect_uri, state)
     Haravan->>User: Hiển thị trang đăng nhập & chọn tổ chức
     User->>Haravan: Cấp quyền
@@ -38,7 +38,7 @@ sequenceDiagram
 
 ```mermaid
 graph TD
-    A[Mở trang /login] --> B[Nhấn nút 'Frappe x Haravan']
+    A[Mở trang /login] --> B[Nhấn nút 'Login With Haravan']
     B --> C{Đã đăng nhập Haravan chưa?}
     C -->|Chưa| D[Nhập Email/Mật khẩu Haravan]
     C -->|Rồi| E[Chọn Tổ chức / Cửa hàng]

@@ -8,12 +8,12 @@ robots: index, follow
 # 🤝 Bàn giao & Lộ trình phát triển
 
 :::info Mục tiêu
-Tài liệu này dành cho **Haravan Developers** (hoặc đội ngũ lập trình viên tiếp quản) để nắm rõ hiện trạng, cách bảo trì, và lộ trình phát triển ứng dụng `Frappe x Haravan`.
+Tài liệu này dành cho **Haravan Developers** (hoặc đội ngũ lập trình viên tiếp quản) để nắm rõ hiện trạng, cách bảo trì, và lộ trình phát triển ứng dụng `Login With Haravan`.
 :::
 
 ## 1. Hiện trạng hệ thống
 
-Ứng dụng `Frappe x Haravan` hiện đảm nhận 2 vai trò cốt lõi:
+Ứng dụng `Login With Haravan` hiện đảm nhận 2 vai trò cốt lõi:
 
 1. **SSO Identity Provider** — Cầu nối OAuth 2.0 cho Frappe Helpdesk, cho phép merchant đăng nhập một chạm từ hệ sinh thái Haravan.
 2. **Helpdesk Identity Link** — Lưu định danh tối thiểu từ Haravan Account (`userid`, `email`, `orgid`) để tạo phiên đăng nhập, liên kết `Haravan Account Link`, `HD Customer`, và `Contact`.

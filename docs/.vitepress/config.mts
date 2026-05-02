@@ -2,8 +2,8 @@ import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
 
 export default withMermaid(defineConfig({
-  title: "Frappe x Haravan",
-  description: "Tài liệu Frappe x Haravan cho Frappe Helpdesk",
+  title: "Login With Haravan",
+  description: "Tài liệu Login With Haravan cho Frappe Helpdesk",
   lang: 'vi-VN',
   themeConfig: {
     nav: [

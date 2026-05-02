@@ -8,7 +8,7 @@ robots: index, follow
 # ⚙️ Bắt đầu & Cấu hình
 
 :::info Mục tiêu
-Hướng dẫn từng bước thiết lập kết nối OAuth giữa Frappe Helpdesk và Haravan Account. Sau khi hoàn thành, nút "Frappe x Haravan Account" sẽ xuất hiện trên trang đăng nhập.
+Hướng dẫn từng bước thiết lập kết nối OAuth giữa Frappe Helpdesk và Haravan Account. Sau khi hoàn thành, nút "Login with Haravan Account" sẽ xuất hiện trên trang đăng nhập.
 :::
 
 ## 1. Cấu hình Frappe Site Config

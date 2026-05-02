@@ -57,7 +57,7 @@ Frappe Cloud chia làm 2 cấp: **Bench** (chứa mã nguồn App) và **Site** 
 
 ### 3.1. Thêm App lần đầu
 
-Nếu `Frappe x Haravan` chưa có trên Frappe Cloud:
+Nếu `Login With Haravan` chưa có trên Frappe Cloud:
 
 1. Đăng nhập [Frappe Cloud Dashboard](https://frappecloud.com/dashboard).
 2. Vào tab **Apps** → chọn **New App**.

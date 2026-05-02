@@ -1,8 +1,8 @@
 app_name = "login_with_haravan"
-app_title = "Frappe x Haravan"
+app_title = "Login With Haravan"
 app_version = "0.1.12"
 app_publisher = "Tody"
-app_description = "Frappe x Haravan Single Sign On Module"
+app_description = "Login With Haravan Single Sign On Module"
 app_email = "todyle@haravan.com"
 app_license = "mit"
 

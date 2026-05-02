@@ -127,7 +127,7 @@ Checklist:
 
 - [ ] In Frappe Cloud, open site `haravandesk.s.frappe.cloud`.
 - [ ] Go to Apps tab.
-- [ ] Confirm `Frappe x Haravan` or `login_with_haravan` appears in installed site apps.
+- [ ] Confirm `Login With Haravan` or `login_with_haravan` appears in installed site apps.
 
 If missing:
 
@@ -195,12 +195,12 @@ If Frappe Cloud does not expose method execution, configure manually in Desk:
 
 1. Visit site and log in as Administrator/System Manager.
 2. Search `Social Login Key`.
-3. Create or open `Frappe x Haravan`.
+3. Create or open `Login With Haravan`.
 4. Set:
 
 ```text
 Social Login Provider: Custom
-Provider Name: Frappe x Haravan
+Provider Name: Login With Haravan
 Enable Social Login: checked
 Client ID: HARAVAN_CLIENT_ID
 Client Secret: leave blank if `haravan_account_login` contains `client_secret`
@@ -244,7 +244,7 @@ Manual browser check:
 https://haravan.help/login
 ```
 
-2. Right-click `Frappe x Haravan Account`.
+2. Right-click `Login with Haravan Account`.
 3. Copy link address.
 4. Decode the `redirect_uri` query parameter.
 5. It must equal:
@@ -276,7 +276,7 @@ Steps:
 https://haravan.help/login
 ```
 
-2. Click `Frappe x Haravan Account`.
+2. Click `Login with Haravan Account`.
 3. Complete Haravan login and organization selection.
 4. Confirm browser returns to Frappe.
 5. Confirm user is logged in.
@@ -321,7 +321,7 @@ It should return non-secret status:
 {
   "provider_exists": true,
   "enabled": true,
-  "provider_name": "Frappe x Haravan",
+  "provider_name": "Login With Haravan",
   "base_url": "https://accounts.haravan.com",
   "redirect_url": "/api/method/login_with_haravan.oauth.login_via_haravan",
   "full_redirect_url": "https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan",

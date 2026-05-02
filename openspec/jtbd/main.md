@@ -1,6 +1,6 @@
 ---
 title: Jobs To Be Done (JTBD)
-description: Khung phân tích JTBD cho Frappe x Haravan
+description: Khung phân tích JTBD cho Login With Haravan
 keywords: jtbd, jobs to be done
 robots: index, follow
 ---

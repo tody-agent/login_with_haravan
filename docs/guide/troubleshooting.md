@@ -14,7 +14,7 @@ robots: index, follow
 **Cách khắc phục:**
 
 1. Mở domain đang dùng làm primary, ví dụ `https://haravan.help/login`.
-2. Chuột phải vào nút **Frappe x Haravan** → **Sao chép địa chỉ liên kết**.
+2. Chuột phải vào nút **Login With Haravan** → **Sao chép địa chỉ liên kết**.
 3. Giải mã tham số `redirect_uri` trong liên kết vừa sao chép.
 4. Đảm bảo nó khớp **hoàn toàn** với URL đã đăng ký:
    ```text
@@ -23,7 +23,7 @@ robots: index, follow
 5. Kiểm tra URL trên phần **Redirect URLs** trong Haravan Partner Dashboard.
 6. Nếu domain vừa đổi: ưu tiên mở login bằng domain mới để hệ thống tự sinh callback. Nếu cần ép domain, cấu hình `haravan_account_login.redirect_uri` trong Site Config — không cần migrate.
 
-## 2. Nút "Frappe x Haravan" không xuất hiện
+## 2. Nút "Login With Haravan" không xuất hiện
 
 **Danh sách kiểm tra:**
 
@@ -81,7 +81,7 @@ Diagnostic chỉ trả trạng thái masked (`has_client_secret`, `client_secret
 ```text
 /helpdesk/my-tickets/new
   → /login?redirect-to=/helpdesk/my-tickets/new
-  → Frappe x Haravan
+  → Login With Haravan
   → /helpdesk/my-tickets/new
 ```
 

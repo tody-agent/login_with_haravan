@@ -139,7 +139,7 @@ python3 -m pip wheel . --no-deps -w /tmp/login_with_haravan_wheel_test
 Run production verification:
 
 1. Open `https://haravan.help/login`.
-2. Click `Frappe x Haravan Account`.
+2. Click `Login with Haravan Account`.
 3. Confirm Haravan accepts the redirect URI.
 4. Complete login.
 5. Confirm `Haravan Account Link` record exists.

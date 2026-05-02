@@ -1,6 +1,6 @@
 ---
 title: Kiến trúc Hệ thống
-description: Tổng quan kiến trúc 7-Layer Frappe cho ứng dụng Frappe x Haravan
+description: Tổng quan kiến trúc 7-Layer Frappe cho ứng dụng Login With Haravan
 keywords: kiến trúc, architecture, 7-layer, frappe, haravan
 robots: index, follow
 ---
@@ -32,7 +32,7 @@ graph TB
 
 ## Chi tiết từng lớp
 
-| Lớp | Thư mục / File | Vai trò trong Frappe x Haravan |
+| Lớp | Thư mục / File | Vai trò trong Login With Haravan |
 |-----|---------------|-------------------------------|
 | **1. DocType Schema** | `login_with_haravan/login_with_haravan/doctype/` | Định nghĩa DocType `haravan_account`, `haravan_account_link` |
 | **2. Controller** | `doctype/*/haravan_account.py` | Xử lý lifecycle event của DocType (before_save, validate, v.v.) |

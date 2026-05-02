@@ -1,4 +1,4 @@
-# Frappe x Haravan
+# Login With Haravan
 
 Frappe custom app for logging in to Frappe Helpdesk with a Haravan Account.
 
@@ -8,10 +8,10 @@ User flow:
 
 ```text
 https://haravan.help/login
-  -> Frappe x Haravan Account
+  -> Login with Haravan Account
   -> Haravan OAuth login
   -> Frappe callback
-  -> Frappe x Haravan logged-in session
+  -> Login With Haravan logged-in session
 ```
 
 The callback stores:
@@ -60,7 +60,7 @@ Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md).
 ## Verify
 
 1. Go to `https://haravan.help/login`.
-2. Click `Frappe x Haravan`.
+2. Click `Login With Haravan`.
 
 ## Agent Documentation
 

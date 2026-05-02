@@ -1,1 +1,1 @@
-"""Tests for Frappe x Haravan."""
+"""Tests for Login With Haravan."""

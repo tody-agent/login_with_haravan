@@ -1,4 +1,4 @@
-# Project: Frappe x Haravan
+# Project: Login With Haravan
 
 ## Summary
 
@@ -22,7 +22,7 @@ login_with_haravan
 
 ```text
 Frappe /login
-  -> Frappe x Haravan Account
+  -> Login with Haravan Account
   -> https://accounts.haravan.com/connect/authorize
   -> /api/method/login_with_haravan.oauth.login_via_haravan
   -> Frappe session created
