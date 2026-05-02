@@ -1,11 +1,8 @@
 from setuptools import setup, find_packages
 
-with open("requirements.txt") as f:
-    install_requires = f.read().strip().split("\n")
-
 setup(
     name="login_with_haravan",
-    version="0.1.11",
+    version="0.1.12",
     description="Frappe x Haravan Account for Frappe Helpdesk",
     author="Haravan",
     packages=find_packages(),
