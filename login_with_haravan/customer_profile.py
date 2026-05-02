@@ -15,6 +15,11 @@ def get_ticket_customer_profile(ticket: str | int, refresh: int | str | bool = 0
 
 @frappe.whitelist()
 def refresh_customer_profile(hd_customer: str, contact: str | None = None):
+    # SECURITY: Explicitly verify permissions to prevent IDOR since
+    # frappe.get_doc() inside engines/customer_enrichment.py does not enforce them.
+    frappe.has_permission("HD Customer", "read", hd_customer, throw=True)
+    if contact:
+        frappe.has_permission("Contact", "read", contact, throw=True)
     return refresh_hd_customer_profile(hd_customer, contact, refresh=True)
 
 
