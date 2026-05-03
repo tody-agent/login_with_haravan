@@ -49,6 +49,10 @@ def refresh_customer_profile(
     contact: str | None = None,
     refresh: bool = True,
 ) -> dict[str, Any]:
+    frappe.has_permission("HD Customer", "read", str(hd_customer), throw=True)
+    if contact:
+        frappe.has_permission("Contact", "read", str(contact), throw=True)
+
     customer_doc = frappe.get_doc("HD Customer", hd_customer)
     contact_doc = frappe.get_doc("Contact", contact) if contact else None
     config = get_bitrix_config()
