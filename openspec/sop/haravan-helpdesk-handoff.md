@@ -244,6 +244,7 @@ Các key:
 
 ```text
 bitrix_webhook_url
+bitrix_responsible_webhook_url
 bitrix_access_token
 bitrix_refresh_token
 bitrix_client_id
@@ -257,7 +258,8 @@ bitrix_refresh_ttl_minutes
 
 Cách cấu hình:
 
-- Nếu dùng webhook URL: cấu hình `bitrix_webhook_url`.
+- Nếu dùng webhook URL: cấu hình `bitrix_webhook_url` để lấy customer/company từ Bitrix CRM.
+- Nếu cần cập nhật người phụ trách từ `ASSIGNED_BY_ID`: cấu hình thêm `bitrix_responsible_webhook_url`, inbound webhook Bitrix có scope `user_basic`, dùng method `user.get`.
 - Nếu dùng OAuth/access token: cấu hình `bitrix_base_url` và `bitrix_access_token`.
 - `bitrix_enabled = 1` để bật enrichment.
 - `bitrix_timeout_seconds` mặc định code đang dùng là `15`.

@@ -59,7 +59,7 @@ Tất cả HD Form Script hiện đang **enabled**. Đây là các script UI tro
 | `AI - Ticket Assist Menu` | AI / Ticket | Menu/action AI tổng hợp cho agent |
 | `AI - Ticket Analyze Action` | AI / Ticket | Nút/action phân tích ticket |
 | `GitLab - Ticket Issue Button` | GitLab / Ticket | Popup đầy đủ: tạo issue, tìm/link issue, xem liên kết hiện tại, sync, gỡ mapping |
-| `Profile - Ticket Customer Button` | Profile / Ticket | Custom button xem hồ sơ khách hàng |
+| `Profile - Ticket Customer Button` | Profile / Ticket | Menu Customer Profile / Refresh Bitrix Profile, gọi `haravan_bitrix_customer_profile` |
 | `Ticket - Intake Field Rules` | Ticket / Intake | Required/visible/validate cơ bản khi tạo ticket |
 | `Ticket - Onboarding Phase Filter` | Ticket / Field dependency | Lọc phase onboarding theo loại/service |
 | `Ticket - Service Line Filter` | Ticket / Field dependency | Lọc service line |
@@ -78,7 +78,7 @@ Tất cả HD Form Script hiện đang **enabled**. Đây là các script UI tro
 |--------|------|-----------|:----------:|----------|
 | `Auth - Login Customer Enrich` | DocType Event | `Haravan Account Link / After Save` | ✅ | Làm giàu `HD Customer` chủ động sau login/register |
 | `Auth - Inside Customer Enrich` | DocType Event | `HD Ticket / Before Save` | ✅ | Làm giàu ticket/customer từ Inside/nguồn nội bộ |
-| `Profile - Bitrix Customer API` | API | `haravan_bitrix_customer_profile` | ✅ | Lấy Customer Profile từ Bitrix theo nhu cầu agent |
+| `Profile - Bitrix Customer API` | API | `haravan_bitrix_customer_profile` | ✅ | Lấy Customer Profile từ Bitrix theo nhu cầu agent, đọc webhook từ `Helpdesk Integrations Settings` và normalize HSI/Shopplan |
 | `Profile - Ticket Routing` | DocType Event | `HD Ticket / Before Save` | ✅ | Routing ticket theo profile/segment khách hàng |
 | `Onboarding - Agent Ticket API` | API | `haravan_agent_create_customer_ticket` | ✅ | Backend cho dialog agent tạo ticket cho khách |
 | `Onboarding - Create Ticket API` | API | `haravan_helpdesk.api.create_onboarding_ticket` | ✅ | Tạo onboarding ticket từ API |

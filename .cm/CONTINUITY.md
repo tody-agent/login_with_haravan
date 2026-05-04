@@ -41,6 +41,39 @@
 
 ## Mistakes & Learnings
 
+- What Failed: `AI - Ticket Copilot Event` spammed Error Logs with
+  `name 'as_text' is not defined` on every `HD Ticket.after_insert`.
+- Why It Failed: Production Server Script used helper functions where one helper
+  called another (`choose_ai_config()` -> `as_text()`). On this Frappe safe_exec
+  runtime, script globals/locals are split, so nested helper lookups can miss
+  symbols defined in the same Server Script.
+- How to Prevent: Keep production Server Scripts top-level or move reusable logic
+  into source-controlled app code. Avoid nested helper-function dependencies in
+  Server Scripts; add a last-resort guard so AI/enrichment never blocks ticket creation.
+- Scope: site:haravandesk.s.frappe.cloud scripts
+
+- What Failed: Portal ticket intake still blocked creation after the syntax fix
+  when `custom_contact_phone` or `custom_store_url` was blank.
+- Why It Failed: Enrichment/supporting fields were enforced as hard gates in both
+  production Server Scripts and `HD Ticket` Custom Field metadata (`reqd=1`), even
+  though Haravan users may manage multiple orgs or have incomplete org/contact data.
+- How to Prevent: Treat Helpdesk intake enrichment as best-effort. Store URL,
+  product suggestion, phone normalization, OrgID, MyHaravan, and HD Customer mapping
+  should enrich when present but never block ticket creation; agents can complete
+  missing data after the ticket exists.
+- Scope: site:haravandesk.s.frappe.cloud scripts
+
+- What Failed: Creating an `HD Ticket` through `helpdesk.helpdesk.doctype.hd_ticket.api.new`
+  returned only `{"exc_type":"SyntaxError"}` and blocked portal ticket creation.
+- Why It Failed: Production Server Script `Ticket - Store URL Enrich` was saved with
+  two leading spaces on every top-level line, so RestrictedPython raised
+  `IndentationError: unexpected indent` at `SCRIPT_TITLE = "HD Ticket - Haravan Store URL Enrichment"`
+  during the `HD Ticket.before_validate` event.
+- How to Prevent: For production Server Scripts, verify the stored source starts at
+  column 0 for top-level statements before enabling, and check recent Error Logs for
+  the concrete `<serverscript>: ...` filename before changing app code.
+- Scope: site:haravandesk.s.frappe.cloud scripts
+
 - What Failed: CC email for agent-created ticket was stored on `HD Ticket.custom_cc_emails`
   but no `Email Queue` or `Error Log` was created.
 - Why It Failed: Production was still running `login_with_haravan` `0.1.5`; the

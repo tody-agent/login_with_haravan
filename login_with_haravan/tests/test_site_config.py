@@ -159,6 +159,7 @@ class SiteConfigCredentialsTest(unittest.TestCase):
             conf={
                 "gemini_api_key": "gemini-secret",
                 "bitrix_access_token": "bitrix-secret",
+                "bitrix_responsible_webhook_url": "responsible-secret",
                 "gitlab_token": "gitlab-secret",
             }
         )
@@ -166,10 +167,62 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         self.assertNotIn("inside", status)
         self.assertTrue(status["ai"]["gemini_api_key"]["configured"])
         self.assertTrue(status["bitrix"]["bitrix_access_token"]["configured"])
+        self.assertTrue(status["bitrix"]["bitrix_responsible_webhook_url"]["configured"])
         self.assertTrue(status["gitlab"]["gitlab_token"]["configured"])
         self.assertNotIn("gemini-secret", repr(status))
         self.assertNotIn("bitrix-secret", repr(status))
+        self.assertNotIn("responsible-secret", repr(status))
         self.assertNotIn("gitlab-secret", repr(status))
+
+    def test_bitrix_config_reads_helpdesk_settings_customer_and_responsible_webhooks(self):
+        from login_with_haravan.engines import site_config
+
+        settings = MagicMock()
+        settings.bitrix_base_url = None
+        settings.bitrix_domain = None
+        settings.bitrix_access_token = None
+        settings.bitrix_refresh_token = None
+        settings.bitrix_client_id = None
+        settings.bitrix_client_secret = None
+
+        def get_password(fieldname, raise_exception=False):
+            return {
+                "bitrix_webhook_url": "https://haravan.bitrix24.vn/rest/57792/customer-secret/",
+                "bitrix_responsible_webhook_url": (
+                    "https://haravan.bitrix24.vn/rest/57792/responsible-secret/"
+                ),
+            }.get(fieldname)
+
+        settings.get_password.side_effect = get_password
+        settings.get.side_effect = lambda fieldname: {
+            "bitrix_enabled": 1,
+            "bitrix_portal_url": "https://haravan.bitrix24.vn",
+            "bitrix_timeout_seconds": 9,
+        }.get(fieldname)
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType" and filters == "Helpdesk Integrations Settings":
+                return True
+            return None
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.get_doc.return_value = settings
+
+        with patch.object(site_config, "_get_frappe_conf", return_value={}):
+            config = site_config.get_bitrix_config()
+
+        self.assertTrue(config["configured"])
+        self.assertTrue(config["responsible_configured"])
+        self.assertEqual(
+            config["webhook_url"],
+            "https://haravan.bitrix24.vn/rest/57792/customer-secret/",
+        )
+        self.assertEqual(
+            config["responsible_webhook_url"],
+            "https://haravan.bitrix24.vn/rest/57792/responsible-secret/",
+        )
+        self.assertEqual(config["base_url"], "https://haravan.bitrix24.vn")
+        self.assertEqual(config["timeout_seconds"], 9)
 
     def test_generic_secret_helper_prefers_site_config_then_legacy_doctype(self):
         from login_with_haravan.engines.site_config import get_site_or_legacy_secret
@@ -531,6 +584,57 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         self.assertTrue(template.saved)
         frappe_mock.db.commit.assert_called()
 
+    def test_setup_creates_helpdesk_integrations_bitrix_config_fields(self):
+        from login_with_haravan.setup import install
+
+        class FakeCustomField:
+            def __init__(self):
+                self.values = {}
+                self.flags = MagicMock()
+                self.inserted = False
+
+            def update(self, values):
+                self.values.update(values)
+                for key, value in values.items():
+                    setattr(self, key, value)
+
+            def insert(self, ignore_permissions=False):
+                self.inserted = True
+
+        created_fields = []
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType" and filters == "Helpdesk Integrations Settings":
+                return True
+            if doctype == "Custom Field":
+                return None
+            return None
+
+        def new_doc(doctype):
+            if doctype == "Custom Field":
+                field = FakeCustomField()
+                created_fields.append(field)
+                return field
+            return MagicMock()
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.new_doc.side_effect = new_doc
+        frappe_mock.get_meta.return_value.has_field.return_value = False
+
+        result = install.configure_helpdesk_integrations_settings_metadata()
+
+        self.assertTrue(result["data"]["configured"])
+        self.assertIn("bitrix_webhook_url", result["data"]["changed_fields"])
+        self.assertIn("bitrix_responsible_webhook_url", result["data"]["changed_fields"])
+        self.assertEqual(len(created_fields), len(install.HELPDESK_INTEGRATIONS_BITRIX_FIELDS))
+        responsible_field = next(
+            field for field in created_fields if field.values["fieldname"] == "bitrix_responsible_webhook_url"
+        )
+        self.assertEqual(responsible_field.values["fieldtype"], "Password")
+        self.assertIn("user.get", responsible_field.values["description"])
+        frappe_mock.clear_cache.assert_called_with(doctype="Helpdesk Integrations Settings")
+        frappe_mock.db.commit.assert_called()
+
     def test_setup_makes_product_suggestion_optional_for_customer_template(self):
         from login_with_haravan.setup import install
 
@@ -664,10 +768,96 @@ class SiteConfigCredentialsTest(unittest.TestCase):
             self.assertEqual(custom_field.values["depends_on"], install.ONBOARDING_SERVICE_DEPENDS_ON)
 
         for _, row in template.rows:
-            self.assertEqual(row["hide_from_customer"], 0)
+            self.assertEqual(row["hide_from_customer"], 1)
             self.assertNotIn("depends_on", row)
 
         frappe_mock.db.commit.assert_called()
+
+    def test_setup_hides_existing_onboarding_service_rows_from_customer_portal(self):
+        from login_with_haravan.setup import install
+
+        class FakeTemplateField:
+            def __init__(self):
+                self.required = 0
+                self.hide_from_customer = 0
+                self.saved = False
+                self.flags = MagicMock()
+
+            def save(self, ignore_permissions=False):
+                self.saved = True
+
+        custom_fields_by_name = {}
+        fields_by_name = {}
+
+        for field in install.HELPDESK_ONBOARDING_SERVICE_FIELDS:
+            doc = MagicMock()
+            doc.dt = "HD Ticket"
+            for key, value in field.items():
+                setattr(doc, key, value)
+            custom_fields_by_name[field["fieldname"]] = doc
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType" and filters == "HD Ticket":
+                return True
+            if doctype == "Custom Field":
+                return True
+            if doctype == "HD Ticket Template" and filters == "Default":
+                return True
+            if doctype == "HD Ticket Template Field":
+                fieldname = filters["fieldname"]
+                fields_by_name.setdefault(fieldname, FakeTemplateField())
+                return f"template-row-{fieldname}"
+            return None
+
+        def get_doc(doctype, name):
+            if doctype == "Custom Field":
+                fieldname = name.removeprefix("HD Ticket-")
+                return custom_fields_by_name[fieldname]
+            if doctype == "HD Ticket Template Field":
+                fieldname = name.removeprefix("template-row-")
+                return fields_by_name[fieldname]
+            return MagicMock()
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.get_doc.side_effect = get_doc
+
+        result = install.configure_onboarding_service_ticket_metadata()
+
+        expected_fieldnames = [
+            "custom_service_group",
+            "custom_service_name",
+            "custom_service_line",
+            "custom_service_onboarding_phrase",
+            "custom_service_pricing",
+            "custom_service_transaction_id",
+            "custom_service_vendor",
+            "custom_service_payment_status",
+        ]
+        self.assertEqual(result["data"]["custom_fields_changed"], [])
+        self.assertEqual(result["data"]["template_rows_changed"], expected_fieldnames)
+        for fieldname in expected_fieldnames:
+            field = fields_by_name[fieldname]
+            self.assertEqual(field.hide_from_customer, 1)
+            self.assertTrue(field.saved)
+
+        frappe_mock.db.commit.assert_called()
+
+    def test_portal_field_patch_script_targets_internal_template_rows(self):
+        from scripts.hide_customer_portal_internal_ticket_fields import (
+            template_field_filters,
+            template_field_payload,
+        )
+
+        filters = template_field_filters("custom_service_pricing")
+        payload = template_field_payload(
+            {"fieldname": "custom_service_pricing", "required": 0, "hide_from_customer": 1}
+        )
+
+        self.assertIn(["parent", "=", "Default"], filters)
+        self.assertIn(["parenttype", "=", "HD Ticket Template"], filters)
+        self.assertIn(["parentfield", "=", "fields"], filters)
+        self.assertIn(["fieldname", "=", "custom_service_pricing"], filters)
+        self.assertEqual(payload, {"required": 0, "hide_from_customer": 1})
 
 
 if __name__ == "__main__":

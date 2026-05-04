@@ -41,13 +41,14 @@ def get_ticket_customer_profile(ticket: str | int, refresh: bool = False) -> dic
             "message": "Ticket has no linked HD Customer.",
         }
 
-    return refresh_customer_profile(hd_customer, contact, refresh=refresh)
+    return refresh_customer_profile(hd_customer, contact, refresh=refresh, ticket=str(ticket))
 
 
 def refresh_customer_profile(
     hd_customer: str,
     contact: str | None = None,
     refresh: bool = True,
+    ticket: str | int | None = None,
 ) -> dict[str, Any]:
     customer_doc = frappe.get_doc("HD Customer", hd_customer)
     contact_doc = frappe.get_doc("Contact", contact) if contact else None
@@ -57,6 +58,7 @@ def refresh_customer_profile(
         "configured": bool(config.get("configured")),
         "company": None,
         "contact": None,
+        "responsible": None,
         "status": "disabled",
     }
 
@@ -115,6 +117,11 @@ def refresh_customer_profile(
             "url": company_url,
             "summary": company,
         }
+        responsible = _resolve_responsible_user(client, company)
+        if responsible:
+            bitrix_data["responsible"] = responsible
+            if responsible.get("active") and responsible.get("name"):
+                _update_ticket_responsible(ticket, responsible["name"])
 
     if bitrix_contact and contact_doc:
         contact_id = _entity_id(bitrix_contact)
@@ -189,6 +196,72 @@ def _contact_doc_summary(doc: Any | None) -> dict[str, Any] | None:
         "bitrix_contact_url": getattr(doc, "custom_bitrix_contact_url", None),
         "bitrix_last_synced_at": getattr(doc, "custom_bitrix_last_synced_at", None),
     }
+
+
+def _resolve_responsible_user(client: BitrixClient, company: dict[str, Any]) -> dict[str, Any] | None:
+    assigned_by_id = company.get("ASSIGNED_BY_ID")
+    if not assigned_by_id:
+        return None
+
+    if not client.config.get("responsible_configured"):
+        return {
+            "id": str(assigned_by_id),
+            "active": False,
+            "status": "missing_config",
+        }
+
+    try:
+        user = client.get_user(assigned_by_id)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Bitrix responsible user fetch failed")
+        return {
+            "id": str(assigned_by_id),
+            "active": False,
+            "status": "error",
+        }
+
+    if not user:
+        return {
+            "id": str(assigned_by_id),
+            "active": False,
+            "status": "not_found",
+        }
+
+    active = _is_bitrix_active(user.get("ACTIVE"))
+    return {
+        "id": str(user.get("ID") or assigned_by_id),
+        "active": active,
+        "email": user.get("EMAIL"),
+        "name": _bitrix_user_name(user),
+        "user_type": user.get("USER_TYPE"),
+        "status": "active" if active else "inactive",
+    }
+
+
+def _update_ticket_responsible(ticket: str | int | None, responsible_name: str) -> bool:
+    if not ticket or not responsible_name:
+        return False
+    try:
+        ticket_doc = frappe.get_doc("HD Ticket", ticket)
+        _set_if_possible(ticket_doc, "custom_responsible", responsible_name)
+        _save_doc(ticket_doc)
+        return True
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Bitrix responsible local save failed")
+        return False
+
+
+def _bitrix_user_name(user: dict[str, Any]) -> str | None:
+    name = " ".join(str(part).strip() for part in [user.get("NAME"), user.get("LAST_NAME")] if part)
+    return name or user.get("EMAIL")
+
+
+def _is_bitrix_active(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "y", "yes"}
+    return bool(value)
 
 
 def _haravan_links(hd_customer: str | None) -> list[dict[str, Any]]:

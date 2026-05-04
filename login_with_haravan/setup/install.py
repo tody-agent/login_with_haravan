@@ -13,8 +13,10 @@ PROVIDER_DOCNAME = "haravan_account"
 PROVIDER_NAME = "Haravan Account"
 HELPDESK_PRODUCT_SUGGESTION_DOCTYPE = "HD Ticket Product Suggestion"
 HELPDESK_TICKET_DOCTYPE = "HD Ticket"
+HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE = "Helpdesk Integrations Settings"
 HELPDESK_TICKET_TEMPLATE = "Default"
 HELPDESK_PRODUCT_SUGGESTION_FIELDNAME = "custom_product_suggestion"
+HELPDESK_TICKET_RESPONSIBLE_FIELDNAME = "custom_responsible"
 ONBOARDING_SERVICE_INTERNAL_TYPE = "Onboarding Service"
 ONBOARDING_SERVICE_DEPENDS_ON = (
     f'eval:doc.custom_internal_type == "{ONBOARDING_SERVICE_INTERNAL_TYPE}"'
@@ -37,6 +39,80 @@ HELPDESK_TICKET_CC_TEMPLATE_FIELD = {
     "hide_from_customer": 1,
     "placeholder": "abc@company.com, xyz@company.com",
 }
+
+HELPDESK_TICKET_RESPONSIBLE_FIELD = {
+    "fieldname": HELPDESK_TICKET_RESPONSIBLE_FIELDNAME,
+    "label": "Người phụ trách Bitrix",
+    "fieldtype": "Data",
+    "insert_after": "contact",
+    "read_only": 1,
+    "description": "Tên người phụ trách lấy từ Bitrix user.get theo ASSIGNED_BY_ID.",
+}
+
+HELPDESK_INTEGRATIONS_BITRIX_FIELDS = [
+    {
+        "fieldname": "bitrix_customer_api_section",
+        "label": "Bitrix - Customer API (crm.company)",
+        "fieldtype": "Section Break",
+    },
+    {
+        "fieldname": "bitrix_enabled",
+        "label": "Enable Bitrix Customer Profile",
+        "fieldtype": "Check",
+        "insert_after": "bitrix_customer_api_section",
+        "default": "1",
+        "description": "Bật/tắt lấy hồ sơ customer/company từ Bitrix.",
+    },
+    {
+        "fieldname": "bitrix_webhook_url",
+        "label": "Bitrix Customer Inbound Webhook URL",
+        "fieldtype": "Password",
+        "insert_after": "bitrix_enabled",
+        "description": (
+            "Webhook dùng để lấy customer/company từ Bitrix CRM, ví dụ "
+            "https://haravan.bitrix24.vn/rest/57792/{customer_secret_key}/. "
+            "Webhook này cần scope crm."
+        ),
+    },
+    {
+        "fieldname": "bitrix_responsible_api_section",
+        "label": "Bitrix - Responsible API (user.get)",
+        "fieldtype": "Section Break",
+        "insert_after": "bitrix_webhook_url",
+    },
+    {
+        "fieldname": "bitrix_responsible_webhook_url",
+        "label": "Bitrix Responsible Inbound Webhook URL",
+        "fieldtype": "Password",
+        "insert_after": "bitrix_responsible_api_section",
+        "description": (
+            "Webhook riêng dùng để gọi user.get theo ASSIGNED_BY_ID, ví dụ "
+            "https://haravan.bitrix24.vn/rest/57792/{new_secret_key}/user.get.json?ID={ASSIGNED_BY_ID}. "
+            "Webhook này cần scope user_basic."
+        ),
+    },
+    {
+        "fieldname": "bitrix_portal_url",
+        "label": "Bitrix Portal URL",
+        "fieldtype": "Data",
+        "insert_after": "bitrix_responsible_webhook_url",
+        "description": "URL portal dùng để build link mở Bitrix, ví dụ https://haravan.bitrix24.vn.",
+    },
+    {
+        "fieldname": "bitrix_timeout_seconds",
+        "label": "Bitrix Timeout Seconds",
+        "fieldtype": "Int",
+        "insert_after": "bitrix_portal_url",
+        "default": "15",
+    },
+    {
+        "fieldname": "bitrix_refresh_ttl_minutes",
+        "label": "Bitrix Refresh TTL Minutes",
+        "fieldtype": "Int",
+        "insert_after": "bitrix_timeout_seconds",
+        "default": "60",
+    },
+]
 
 HELPDESK_ONBOARDING_SERVICE_FIELDS = [
     {
@@ -101,7 +177,7 @@ HELPDESK_ONBOARDING_SERVICE_TEMPLATE_FIELDS = [
     {
         "fieldname": field["fieldname"],
         "required": 0,
-        "hide_from_customer": 0,
+        "hide_from_customer": 1,
     }
     for field in HELPDESK_ONBOARDING_SERVICE_FIELDS
 ]
@@ -177,6 +253,7 @@ HELPDESK_PROFILE_CUSTOM_FIELDS = {
 def after_install():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
+    configure_helpdesk_integrations_settings_metadata()
     configure_helpdesk_product_suggestion_permissions()
     configure_helpdesk_product_suggestion_customer_optional()
     configure_ticket_cc_metadata()
@@ -186,6 +263,7 @@ def after_install():
 def after_migrate():
     configure_haravan_social_login()
     configure_customer_profile_metadata()
+    configure_helpdesk_integrations_settings_metadata()
     configure_helpdesk_product_suggestion_permissions()
     configure_helpdesk_product_suggestion_customer_optional()
     configure_ticket_cc_metadata()
@@ -324,6 +402,10 @@ def configure_customer_profile_metadata():
             doc.insert(ignore_permissions=True)
             created.append(custom_field_name)
 
+    if frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
+        if _ensure_custom_field(HELPDESK_TICKET_DOCTYPE, HELPDESK_TICKET_RESPONSIBLE_FIELD):
+            created.append(f"{HELPDESK_TICKET_DOCTYPE}-{HELPDESK_TICKET_RESPONSIBLE_FIELDNAME}")
+
     if created:
         frappe.db.commit()
 
@@ -331,6 +413,46 @@ def configure_customer_profile_metadata():
         "success": True,
         "data": {"created": created},
         "message": "Customer profile metadata configured.",
+    }
+
+
+@frappe.whitelist()
+def configure_helpdesk_integrations_settings_metadata():
+    """Create Bitrix config fields on Helpdesk Integrations Settings."""
+    frappe.only_for("System Manager")
+    if not frappe.db.exists("DocType", HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE):
+        return {
+            "success": True,
+            "data": {"configured": False, "reason": "doctype_missing"},
+            "message": "Helpdesk Integrations Settings DocType is not installed.",
+        }
+
+    changed_fields = []
+    skipped_existing_fields = []
+    for field in HELPDESK_INTEGRATIONS_BITRIX_FIELDS:
+        fieldname = str(field["fieldname"])
+        custom_field_name = f"{HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE}-{fieldname}"
+        if not frappe.db.exists("Custom Field", custom_field_name) and _doctype_has_field(
+            HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE,
+            fieldname,
+        ):
+            skipped_existing_fields.append(fieldname)
+            continue
+        if _ensure_custom_field(HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE, field):
+            changed_fields.append(fieldname)
+
+    if changed_fields:
+        frappe.clear_cache(doctype=HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE)
+        frappe.db.commit()
+
+    return {
+        "success": True,
+        "data": {
+            "configured": True,
+            "changed_fields": changed_fields,
+            "skipped_existing_fields": skipped_existing_fields,
+        },
+        "message": "Helpdesk Integrations Settings Bitrix fields configured.",
     }
 
 
@@ -374,7 +496,7 @@ def configure_ticket_cc_metadata():
 
 @frappe.whitelist()
 def configure_onboarding_service_ticket_metadata():
-    """Show paid-service ticket fields only for Onboarding Service tickets."""
+    """Keep paid-service ticket fields internal to agents."""
     frappe.only_for("System Manager")
     if not frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
         return {
@@ -492,6 +614,17 @@ def _ensure_custom_field(doctype: str, field: dict[str, object]) -> bool:
     else:
         doc.insert(ignore_permissions=True)
     return True
+
+
+def _doctype_has_field(doctype: str, fieldname: str) -> bool:
+    try:
+        meta = frappe.get_meta(doctype)
+        has_field = getattr(meta, "has_field", None)
+        if callable(has_field):
+            return bool(has_field(fieldname))
+    except Exception:
+        return False
+    return False
 
 
 def _ensure_ticket_template_field(template: str, row: dict[str, object]) -> bool:

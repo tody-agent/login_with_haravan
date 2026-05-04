@@ -89,6 +89,7 @@
     var bitrix = data.bitrix || {};
     var company = bitrix.company || {};
     var bitrixContact = bitrix.contact || {};
+    var responsible = bitrix.responsible || {};
     var haravanLinks = data.haravan || [];
 
     panel.innerHTML =
@@ -115,7 +116,9 @@
         field("Status", bitrix.status) +
           field("Company ID", company.id || customer.bitrix_company_id) +
           field("Company", company.title) +
-          field("URL", company.url || customer.bitrix_company_url)
+          field("URL", company.url || customer.bitrix_company_url) +
+          field("Responsible", responsible.name) +
+          field("Responsible Status", responsible.status)
       ) +
       section(
         "Bitrix Contact",
