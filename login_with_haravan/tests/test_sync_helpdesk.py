@@ -42,24 +42,24 @@ from login_with_haravan.engines.sync_helpdesk import (
 
 
 class TestMakeHdCustomerName(unittest.TestCase):
-    """Test the deterministic naming: '[OrgID] - [OrgName]'."""
+    """Test the deterministic naming: '[OrgName] - [OrgID]'."""
 
     def test_basic_format(self):
         self.assertEqual(
             _make_hd_customer_name("12345", "Minh Hải Store"),
-            "12345 - Minh Hải Store",
+            "Minh Hải Store - 12345",
         )
 
     def test_numeric_orgid(self):
         self.assertEqual(
             _make_hd_customer_name("999", "Test Shop"),
-            "999 - Test Shop",
+            "Test Shop - 999",
         )
 
     def test_int_orgid(self):
         self.assertEqual(
             _make_hd_customer_name(12345, "Minh Hải Store"),
-            "12345 - Minh Hải Store",
+            "Minh Hải Store - 12345",
         )
 
 
@@ -138,28 +138,28 @@ class TestUpsertHdCustomer(unittest.TestCase):
     def setUp(self):
         _reset_frappe_mock()
 
-    def test_creates_new_hd_customer_with_orgid_prefix(self):
-        """Should create HD Customer with name format '[OrgID] - [OrgName]'."""
+    def test_creates_new_hd_customer_with_orgid_suffix(self):
+        """Should create HD Customer with name format '[OrgName] - [OrgID]'."""
         # custom_haravan_orgid lookup returns None, name lookup returns None
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
-        doc.name = "12345 - Minh Hải Store"
+        doc.name = "Minh Hải Store - 12345"
         frappe_mock.new_doc.return_value = doc
 
         result = upsert_hd_customer({"orgid": "12345", "orgname": "Minh Hải Store"})
 
         frappe_mock.new_doc.assert_called_with("HD Customer")
-        self.assertEqual(doc.customer_name, "12345 - Minh Hải Store")
+        self.assertEqual(doc.customer_name, "Minh Hải Store - 12345")
         self.assertEqual(doc.domain, "12345.myharavan.com")
         self.assertEqual(doc.custom_haravan_orgid, 12345)
         self.assertEqual(doc.custom_myharavan, "12345.myharavan.com")
         doc.insert.assert_called_once()
-        self.assertEqual(result, "12345 - Minh Hải Store")
+        self.assertEqual(result, "Minh Hải Store - 12345")
 
     def test_returns_existing_by_orgid_lookup(self):
         """Should find existing HD Customer by custom_haravan_orgid (primary lookup)."""
         # Primary lookup returns name
-        frappe_mock.db.get_value.return_value = "12345 - Minh Hải Store"
+        frappe_mock.db.get_value.return_value = "Minh Hải Store - 12345"
         frappe_mock.get_doc.return_value = MagicMock(
             domain="12345.myharavan.com",
             custom_haravan_orgid=12345,
@@ -168,13 +168,13 @@ class TestUpsertHdCustomer(unittest.TestCase):
 
         result = upsert_hd_customer({"orgid": "12345", "orgname": "Minh Hải Store"})
 
-        self.assertEqual(result, "12345 - Minh Hải Store")
+        self.assertEqual(result, "Minh Hải Store - 12345")
         frappe_mock.new_doc.assert_not_called()
 
     def test_returns_existing_by_name_fallback(self):
         """Should find existing HD Customer by candidate_name if orgid lookup misses."""
         # custom_haravan_orgid lookup returns None, name lookup returns match
-        frappe_mock.db.get_value.side_effect = [None, "12345 - Minh Hải Store"]
+        frappe_mock.db.get_value.side_effect = [None, "Minh Hải Store - 12345"]
         frappe_mock.get_doc.return_value = MagicMock(
             domain="12345.myharavan.com",
             custom_haravan_orgid=12345,
@@ -183,7 +183,7 @@ class TestUpsertHdCustomer(unittest.TestCase):
 
         result = upsert_hd_customer({"orgid": "12345", "orgname": "Minh Hải Store"})
 
-        self.assertEqual(result, "12345 - Minh Hải Store")
+        self.assertEqual(result, "Minh Hải Store - 12345")
         frappe_mock.new_doc.assert_not_called()
 
     def test_returns_none_for_missing_orgid(self):
@@ -200,7 +200,7 @@ class TestUpsertHdCustomer(unittest.TestCase):
         """Should convert orgid string to int for custom_haravan_orgid field."""
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
-        doc.name = "99999 - Test"
+        doc.name = "Test - 99999"
         frappe_mock.new_doc.return_value = doc
 
         upsert_hd_customer({"orgid": "99999", "orgname": "Test"})
@@ -212,7 +212,7 @@ class TestUpsertHdCustomer(unittest.TestCase):
         """Login sync should not write old Haravan commerce enrichment fields."""
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
-        doc.name = "12345 - Test Shop"
+        doc.name = "Test Shop - 12345"
         frappe_mock.new_doc.return_value = doc
 
         normalized = {
@@ -238,17 +238,17 @@ class TestUpsertHdCustomer(unittest.TestCase):
         """Should create HD Customer gracefully when haravan_org_data is empty."""
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
-        doc.name = "12345 - Test Shop"
+        doc.name = "Test Shop - 12345"
         frappe_mock.new_doc.return_value = doc
 
         result = upsert_hd_customer({"orgid": "12345", "orgname": "Test Shop"})
 
         doc.insert.assert_called_once()
-        self.assertEqual(result, "12345 - Test Shop")
+        self.assertEqual(result, "Test Shop - 12345")
 
     def test_does_not_update_legacy_plan_fields_on_existing_customer(self):
         """Bitrix on-demand profile replaced Haravan shop/subscription updates."""
-        frappe_mock.db.get_value.return_value = "12345 - Test Shop"
+        frappe_mock.db.get_value.return_value = "Test Shop - 12345"
         existing_doc = MagicMock()
         existing_doc.domain = "12345.myharavan.com"
         existing_doc.custom_haravan_orgid = 12345
@@ -290,13 +290,13 @@ class TestUpsertContact(unittest.TestCase):
 
         upsert_contact(
             {"email": "test@example.com", "name": "Test User", "middle_name": ""},
-            "12345 - Minh Hải Store",
+            "Minh Hải Store - 12345",
         )
 
         frappe_mock.new_doc.assert_called_with("Contact")
         contact_doc.append.assert_called_once_with(
             "links",
-            {"link_doctype": "HD Customer", "link_name": "12345 - Minh Hải Store"},
+            {"link_doctype": "HD Customer", "link_name": "Minh Hải Store - 12345"},
         )
         contact_doc.insert.assert_called_once()
 
@@ -305,19 +305,19 @@ class TestUpsertContact(unittest.TestCase):
         frappe_mock.db.get_value.return_value = "existing-contact-001"
         contact_doc = MagicMock()
         contact_doc.links = [
-            MagicMock(link_doctype="HD Customer", link_name="11111 - Old Store"),
+            MagicMock(link_doctype="HD Customer", link_name="Old Store - 11111"),
         ]
         contact_doc.middle_name = "Has"
         frappe_mock.get_doc.return_value = contact_doc
 
         upsert_contact(
             {"email": "test@example.com", "name": "Test", "middle_name": ""},
-            "22222 - New Store",
+            "New Store - 22222",
         )
 
         contact_doc.append.assert_called_once_with(
             "links",
-            {"link_doctype": "HD Customer", "link_name": "22222 - New Store"},
+            {"link_doctype": "HD Customer", "link_name": "New Store - 22222"},
         )
         contact_doc.save.assert_called_once()
 
@@ -326,14 +326,14 @@ class TestUpsertContact(unittest.TestCase):
         frappe_mock.db.get_value.return_value = "existing-contact-001"
         contact_doc = MagicMock()
         contact_doc.links = [
-            MagicMock(link_doctype="HD Customer", link_name="12345 - Same Store"),
+            MagicMock(link_doctype="HD Customer", link_name="Same Store - 12345"),
         ]
         contact_doc.middle_name = "Has"
         frappe_mock.get_doc.return_value = contact_doc
 
         upsert_contact(
             {"email": "test@example.com", "name": "Test", "middle_name": ""},
-            "12345 - Same Store",
+            "Same Store - 12345",
         )
 
         contact_doc.append.assert_not_called()
@@ -341,7 +341,7 @@ class TestUpsertContact(unittest.TestCase):
 
     def test_skips_when_no_email(self):
         """Should skip when email is missing."""
-        upsert_contact({"name": "No Email"}, "12345 - Store")
+        upsert_contact({"name": "No Email"}, "Store - 12345")
         frappe_mock.db.get_value.assert_not_called()
 
 
@@ -367,13 +367,13 @@ class TestRoleBasedLinking(unittest.TestCase):
             "email": "owner@shop.com", "orgid": "123", "orgname": "Shop",
             "role": ["owner"],
         }
-        mock_upsert_cust.return_value = "123 - Shop"
+        mock_upsert_cust.return_value = "Shop - 123"
 
         enrich_helpdesk_data("owner@shop.com", {})
 
         mock_upsert_contact.assert_called_once()
         args = mock_upsert_contact.call_args
-        self.assertEqual(args[0][1], "123 - Shop")  # hd_customer_name passed
+        self.assertEqual(args[0][1], "Shop - 123")  # hd_customer_name passed
 
     @patch("login_with_haravan.engines.sync_helpdesk.upsert_contact")
     @patch("login_with_haravan.engines.sync_helpdesk.upsert_hd_customer")
@@ -385,13 +385,13 @@ class TestRoleBasedLinking(unittest.TestCase):
             "email": "admin@shop.com", "orgid": "123", "orgname": "Shop",
             "role": ["admin"],
         }
-        mock_upsert_cust.return_value = "123 - Shop"
+        mock_upsert_cust.return_value = "Shop - 123"
 
         enrich_helpdesk_data("admin@shop.com", {})
 
         mock_upsert_contact.assert_called_once()
         args = mock_upsert_contact.call_args
-        self.assertEqual(args[0][1], "123 - Shop")
+        self.assertEqual(args[0][1], "Shop - 123")
 
     @patch("login_with_haravan.engines.sync_helpdesk.upsert_contact")
     @patch("login_with_haravan.engines.sync_helpdesk.upsert_hd_customer")
@@ -403,7 +403,7 @@ class TestRoleBasedLinking(unittest.TestCase):
             "email": "staff@shop.com", "orgid": "123", "orgname": "Shop",
             "role": ["staff"],
         }
-        mock_upsert_cust.return_value = "123 - Shop"
+        mock_upsert_cust.return_value = "Shop - 123"
 
         enrich_helpdesk_data("staff@shop.com", {})
 
@@ -421,7 +421,7 @@ class TestRoleBasedLinking(unittest.TestCase):
             "email": "norole@shop.com", "orgid": "123", "orgname": "Shop",
             "role": [],
         }
-        mock_upsert_cust.return_value = "123 - Shop"
+        mock_upsert_cust.return_value = "Shop - 123"
 
         enrich_helpdesk_data("norole@shop.com", {})
 
@@ -437,21 +437,21 @@ class TestAutoSetCustomer(unittest.TestCase):
         """Should auto-set customer when user has exactly 1 HD Customer."""
         frappe_mock.session.user = "test@example.com"
         frappe_mock.get_all.return_value = [
-            MagicMock(hd_customer="12345 - Minh Hải Store"),
+            MagicMock(hd_customer="Minh Hải Store - 12345"),
         ]
         doc = MagicMock()
         doc.customer = None
 
         auto_set_customer(doc)
 
-        self.assertEqual(doc.customer, "12345 - Minh Hải Store")
+        self.assertEqual(doc.customer, "Minh Hải Store - 12345")
 
     def test_does_not_set_when_multiple_customers(self):
         """Should NOT set customer when user has multiple HD Customers."""
         frappe_mock.session.user = "test@example.com"
         frappe_mock.get_all.return_value = [
-            MagicMock(hd_customer="11111 - Store A"),
-            MagicMock(hd_customer="22222 - Store B"),
+            MagicMock(hd_customer="Store A - 11111"),
+            MagicMock(hd_customer="Store B - 22222"),
         ]
         doc = MagicMock()
         doc.customer = None
@@ -492,7 +492,7 @@ class TestLegacyHaravanCommerceDataIgnored(unittest.TestCase):
         """Should not use shop.created_at for first paid date."""
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
-        doc.name = "12345 - Test Shop"
+        doc.name = "Test Shop - 12345"
         frappe_mock.new_doc.return_value = doc
 
         normalized = {
@@ -512,7 +512,7 @@ class TestLegacyHaravanCommerceDataIgnored(unittest.TestCase):
         """Should not use subscription_created_at for first paid date."""
         frappe_mock.db.get_value.side_effect = [None, None]
         doc = MagicMock()
-        doc.name = "12345 - Test Shop"
+        doc.name = "Test Shop - 12345"
         frappe_mock.new_doc.return_value = doc
 
         normalized = {

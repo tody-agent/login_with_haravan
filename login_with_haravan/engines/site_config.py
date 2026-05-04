@@ -25,6 +25,7 @@ HELPDESK_SECRET_CONFIG_KEYS: dict[str, tuple[str, ...]] = {
     "ai": ("gemini_api_key", "gemini_model", "openrouter_api_key"),
     "bitrix": (
         "bitrix_webhook_url",
+        "bitrix_responsible_webhook_url",
         "bitrix_access_token",
         "bitrix_refresh_token",
         "bitrix_client_id",
@@ -151,29 +152,59 @@ def get_helpdesk_secret_status(conf: Any | None = None) -> dict[str, dict[str, d
 
 def get_bitrix_config(conf: Any | None = None) -> dict[str, Any]:
     """Return Bitrix runtime config for server-side callers only."""
-    webhook_url = get_site_config_value("bitrix_webhook_url", conf=conf)
-    access_token = get_site_config_value("bitrix_access_token", conf=conf)
-    base_url = get_site_config_value("bitrix_base_url", conf=conf)
-    domain = get_site_config_value("bitrix_domain", conf=conf)
+    settings_doc = None if conf is not None else _get_helpdesk_integrations_settings()
+    webhook_url = _get_site_or_settings_value(
+        "bitrix_webhook_url",
+        settings_doc=settings_doc,
+        conf=conf,
+    )
+    responsible_webhook_url = _get_site_or_settings_value(
+        "bitrix_responsible_webhook_url",
+        settings_doc=settings_doc,
+        conf=conf,
+    )
+    access_token = _get_site_or_settings_value(
+        "bitrix_access_token",
+        settings_doc=settings_doc,
+        conf=conf,
+    )
+    base_url = _get_site_or_settings_value(
+        "bitrix_base_url",
+        settings_doc=settings_doc,
+        conf=conf,
+    )
+    domain = _get_site_or_settings_value(
+        "bitrix_domain",
+        settings_doc=settings_doc,
+        conf=conf,
+    )
+    portal_url = _get_site_or_settings_value(
+        "bitrix_portal_url",
+        settings_doc=settings_doc,
+        conf=conf,
+    )
     enabled = _as_bool(
-        get_site_config_value(
+        _get_site_or_settings_value(
             "bitrix_enabled",
-            BITRIX_RUNTIME_DEFAULTS["bitrix_enabled"],
+            settings_doc=settings_doc,
+            default=BITRIX_RUNTIME_DEFAULTS["bitrix_enabled"],
             conf=conf,
         )
     )
     timeout_seconds = _as_int(
-        get_site_config_value(
+        _get_site_or_settings_value(
             "bitrix_timeout_seconds",
-            BITRIX_RUNTIME_DEFAULTS["bitrix_timeout_seconds"],
+            settings_doc=settings_doc,
+            default=BITRIX_RUNTIME_DEFAULTS["bitrix_timeout_seconds"],
             conf=conf,
         ),
         BITRIX_RUNTIME_DEFAULTS["bitrix_timeout_seconds"],
     )
     refresh_ttl_minutes = _as_int(
-        get_site_config_value(
+        _get_site_or_settings_value(
             "bitrix_refresh_ttl_minutes",
-            BITRIX_RUNTIME_DEFAULTS["bitrix_refresh_ttl_minutes"],
+            settings_doc=settings_doc,
+            default=BITRIX_RUNTIME_DEFAULTS["bitrix_refresh_ttl_minutes"],
             conf=conf,
         ),
         BITRIX_RUNTIME_DEFAULTS["bitrix_refresh_ttl_minutes"],
@@ -184,11 +215,25 @@ def get_bitrix_config(conf: Any | None = None) -> dict[str, Any]:
         "enabled": enabled,
         "configured": configured,
         "webhook_url": webhook_url,
+        "responsible_webhook_url": responsible_webhook_url,
+        "responsible_configured": bool(_has_value(responsible_webhook_url)),
         "access_token": access_token,
-        "refresh_token": get_site_config_value("bitrix_refresh_token", conf=conf),
-        "client_id": get_site_config_value("bitrix_client_id", conf=conf),
-        "client_secret": get_site_config_value("bitrix_client_secret", conf=conf),
-        "base_url": base_url,
+        "refresh_token": _get_site_or_settings_value(
+            "bitrix_refresh_token",
+            settings_doc=settings_doc,
+            conf=conf,
+        ),
+        "client_id": _get_site_or_settings_value(
+            "bitrix_client_id",
+            settings_doc=settings_doc,
+            conf=conf,
+        ),
+        "client_secret": _get_site_or_settings_value(
+            "bitrix_client_secret",
+            settings_doc=settings_doc,
+            conf=conf,
+        ),
+        "base_url": base_url or portal_url,
         "domain": domain,
         "timeout_seconds": timeout_seconds,
         "refresh_ttl_minutes": refresh_ttl_minutes,
@@ -216,6 +261,25 @@ def get_site_or_legacy_secret(
             return {"value": value, "source": "legacy_doctype"}
 
     return {"value": None, "source": "missing"}
+
+
+def _get_site_or_settings_value(
+    config_key: str,
+    settings_doc: Any | None,
+    default: Any = None,
+    conf: Any | None = None,
+) -> Any:
+    value = get_site_config_value(config_key, conf=conf)
+    if _has_value(value):
+        return value
+
+    if conf is not None or settings_doc is None:
+        return default
+
+    value = _get_legacy_field_value(settings_doc, config_key)
+    if _has_value(value):
+        return value
+    return default
 
 
 def _get_haravan_site_credentials(conf: Any | None = None) -> dict[str, str | None]:
@@ -247,6 +311,15 @@ def _get_frappe_conf() -> Any | None:
     local = getattr(frappe, "local", None)
     local_conf = getattr(local, "conf", None)
     return local_conf or getattr(frappe, "conf", None)
+
+
+def _get_helpdesk_integrations_settings() -> Any | None:
+    try:
+        if not frappe.db.exists("DocType", "Helpdesk Integrations Settings"):
+            return None
+        return frappe.get_doc("Helpdesk Integrations Settings")
+    except Exception:
+        return None
 
 
 def _coerce_mapping(value: Any) -> dict[str, Any]:

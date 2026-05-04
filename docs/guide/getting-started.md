@@ -60,11 +60,21 @@ Các token/secret khác của Helpdesk cũng nên đặt ở Site Config:
 | `gemini_api_key` | API key cho Gemini AI |
 | `gemini_model` | Model Gemini sử dụng |
 | `openrouter_api_key` | API key OpenRouter |
-| `bitrix_webhook_url` | Webhook URL Bitrix |
+| `bitrix_webhook_url` | Webhook URL Bitrix lấy customer/company (`crm`) |
+| `bitrix_responsible_webhook_url` | Webhook URL Bitrix lấy người phụ trách (`user.get`, scope `user_basic`) |
 | `bitrix_access_token` | Access token Bitrix |
 | `bitrix_enabled` | Bật/tắt tích hợp Bitrix |
 | `bitrix_timeout_seconds` | Timeout gọi Bitrix |
 | `bitrix_refresh_ttl_minutes` | TTL refresh token Bitrix |
+
+:::tip Cấu hình Bitrix trong Helpdesk Integrations Settings
+Trên production `https://haravandesk.s.frappe.cloud/desk/helpdesk-integrations-settings`, tab **Bitrix** cần có 2 webhook riêng:
+
+- **Bitrix Customer Inbound Webhook URL**: lấy customer/company bằng `crm.company.*`, scope Bitrix `crm`.
+- **Bitrix Responsible Inbound Webhook URL**: lấy người phụ trách bằng `user.get?ID={ASSIGNED_BY_ID}`, scope Bitrix `user_basic`.
+
+Nếu màn hình chỉ có field **Bitrix Webhook URL**, chạy `npm run patch:bitrix-settings` với `HARAVAN_HELP_SITE`, `HARAVAN_HELP_API_KEY`, `HARAVAN_HELP_API_SECRET` để cập nhật metadata form.
+:::
 
 ## 2. Cấu hình Social Login Key
 

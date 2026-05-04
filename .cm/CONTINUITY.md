@@ -1,17 +1,22 @@
 # Working Memory
 
-- Active Goal: Fix false migration crash on Frappe Cloud
-- Just Completed: Reverted modules.txt from "Login With Haravan" → "Login With Haravan"
-  to fix ModuleNotFoundError during bench migrate. Shipped to main (baf259d).
+- Active Goal: Bitrix metajson customer enrichment via Server Script
+- Just Completed: ✅ Reworked Option A away from custom app runtime into a
+  Desk-managed Server Script deploy helper; quality gate passed with pre-commit
+  plus 100 Python tests, 0 failures.
 - Next Actions:
-  - Trigger bench migrate on Frappe Cloud (haravandesk.s.frappe.cloud) to verify fix.
-  - Monitor migration job for successful completion.
-- Current Phase: fix shipped to GitHub main; awaiting Frappe Cloud redeploy
-- Working Context: GitLab popup uses `HD Form Script` `GitLab - Ticket Issue Button`
-  and Server Script API method `haravan_helpdesk.api.gitlab_popup_v2`. Add product
-  suggestion labels by returning `default_labels` from `init`, derived from
-  `HD Ticket.custom_product_suggestion` -> `HD Ticket Product Suggestion.gitlab_labels`,
-  while preserving existing base labels `helpdesk,customer-report`.
+  - Run `scripts/deploy_bitrix_metajson_enrichment.py` with Haravan Helpdesk
+    API credentials to create/update the Server Script and guard Custom Fields.
+  - Wire production metajson/Server Script to call API method
+    `haravan_bitrix_metajson_company_enrichment`.
+  - Smoke test with an orgid that exists in Bitrix and confirm `HD Customer Data`
+    snapshot plus guard fields.
+- Current Phase: verified
+- Working Context: Runtime logic lives in `Server Script` source embedded in
+  `scripts/deploy_bitrix_metajson_enrichment.py`, not in custom app Python. It
+  uses `bitrix_refresh_ttl_minutes`, cache lock by `orgid`,
+  `custom_bitrix_last_checked_at`, and Bitrix `DATE_MODIFY` to avoid loops and
+  repeated writes.
 
 - Previous Goal: CC Email Smoke Test on haravan.help completed
 - Just Completed: Ticket CC Emails Option B implemented and production smoke-tested on `0.1.6`
@@ -40,6 +45,39 @@
 - Scope: site:haravandesk.s.frappe.cloud scripts
 
 ## Mistakes & Learnings
+
+- What Failed: `AI - Ticket Copilot Event` spammed Error Logs with
+  `name 'as_text' is not defined` on every `HD Ticket.after_insert`.
+- Why It Failed: Production Server Script used helper functions where one helper
+  called another (`choose_ai_config()` -> `as_text()`). On this Frappe safe_exec
+  runtime, script globals/locals are split, so nested helper lookups can miss
+  symbols defined in the same Server Script.
+- How to Prevent: Keep production Server Scripts top-level or move reusable logic
+  into source-controlled app code. Avoid nested helper-function dependencies in
+  Server Scripts; add a last-resort guard so AI/enrichment never blocks ticket creation.
+- Scope: site:haravandesk.s.frappe.cloud scripts
+
+- What Failed: Portal ticket intake still blocked creation after the syntax fix
+  when `custom_contact_phone` or `custom_store_url` was blank.
+- Why It Failed: Enrichment/supporting fields were enforced as hard gates in both
+  production Server Scripts and `HD Ticket` Custom Field metadata (`reqd=1`), even
+  though Haravan users may manage multiple orgs or have incomplete org/contact data.
+- How to Prevent: Treat Helpdesk intake enrichment as best-effort. Store URL,
+  product suggestion, phone normalization, OrgID, MyHaravan, and HD Customer mapping
+  should enrich when present but never block ticket creation; agents can complete
+  missing data after the ticket exists.
+- Scope: site:haravandesk.s.frappe.cloud scripts
+
+- What Failed: Creating an `HD Ticket` through `helpdesk.helpdesk.doctype.hd_ticket.api.new`
+  returned only `{"exc_type":"SyntaxError"}` and blocked portal ticket creation.
+- Why It Failed: Production Server Script `Ticket - Store URL Enrich` was saved with
+  two leading spaces on every top-level line, so RestrictedPython raised
+  `IndentationError: unexpected indent` at `SCRIPT_TITLE = "HD Ticket - Haravan Store URL Enrichment"`
+  during the `HD Ticket.before_validate` event.
+- How to Prevent: For production Server Scripts, verify the stored source starts at
+  column 0 for top-level statements before enabling, and check recent Error Logs for
+  the concrete `<serverscript>: ...` filename before changing app code.
+- Scope: site:haravandesk.s.frappe.cloud scripts
 
 - What Failed: CC email for agent-created ticket was stored on `HD Ticket.custom_cc_emails`
   but no `Email Queue` or `Error Log` was created.

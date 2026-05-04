@@ -4,7 +4,7 @@ Handles upsert of HD Customer, Contact, and User profile links after
 successful Haravan OAuth login.
 
 HD Customer field mapping (production):
-  - customer_name (str): "[OrgID] - [OrgName]"
+  - customer_name (str): "[OrgName] - [OrgID]"
   - custom_haravan_orgid (Int): Haravan organization ID
   - domain (str): e.g. "shopname.myharavan.com"
   - custom_myharavan (str): MyHaravan subdomain
@@ -71,8 +71,8 @@ def update_user_profile(user: str, normalized: dict):
 
 
 def _make_hd_customer_name(org_id, org_name: str) -> str:
-    """Build deterministic HD Customer name: '[OrgID] - [OrgName]'."""
-    return f"{org_id} - {org_name}"
+    """Build deterministic HD Customer name: '[OrgName] - [OrgID]'."""
+    return f"{org_name} - {org_id}"
 
 
 def _safe_int(value) -> int | None:
@@ -88,7 +88,7 @@ def _safe_int(value) -> int | None:
 def upsert_hd_customer(normalized: dict) -> str | None:
     """Create or update an HD Customer record for a Haravan organization.
 
-    Naming: ``{orgid} - {orgname}`` (e.g. ``12345 - Minh Hải Store``).
+    Naming: ``{orgname} - {orgid}`` (e.g. ``Minh Hải Store - 12345``).
     Primary lookup is by ``custom_haravan_orgid`` (Int field) for deterministic matching.
 
     Returns the HD Customer name (document ID) or None if orgid/orgname missing.

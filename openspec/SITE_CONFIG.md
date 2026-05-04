@@ -2,7 +2,7 @@
 
 ## Mục tiêu
 
-Tất cả token/secret dùng cho Haravan Desk phải được đặt trong **Frappe Cloud > Site Config**. Settings DocType, Server Script, Client Script, HD Form Script chỉ được giữ cấu hình không nhạy cảm như `enabled`, `model`, `timeout`, `default_project_id`.
+Tất cả token/secret dùng cho Haravan Desk nên được đặt trong **Frappe Cloud > Site Config**, ngoại trừ Bitrix Customer Profile production hiện đang dùng **Helpdesk Integrations Settings** để Haravan team có UI quản trị token. Settings DocType, Server Script, Client Script, HD Form Script chỉ được giữ cấu hình không nhạy cảm như `enabled`, `model`, `timeout`, `default_project_id`, trừ field `bitrix_webhook_url` dạng `Password`.
 
 Client Script và HD Form Script chạy trên browser nên tuyệt đối không chứa API token, webhook secret, access token, client secret.
 
@@ -23,7 +23,7 @@ Thêm các key sau nếu tính năng tương ứng đang dùng:
 | Haravan OAuth fallback | `haravan_client_id`, `haravan_client_secret` | Chỉ dùng nếu Frappe Cloud không lưu được JSON object |
 | AI Gemini | `gemini_api_key`, `gemini_model` | `gemini_model` không secret nhưng để cùng chỗ cho dễ vận hành |
 | AI OpenRouter | `openrouter_api_key` | Dùng cho workflow toolbar nếu chọn OpenRouter |
-| Bitrix | `bitrix_webhook_url`, `bitrix_access_token`, `bitrix_refresh_token`, `bitrix_client_id`, `bitrix_client_secret`, `bitrix_base_url`, `bitrix_domain`, `bitrix_enabled`, `bitrix_timeout_seconds`, `bitrix_refresh_ttl_minutes` | Nguồn enrich Customer Profile duy nhất |
+| Bitrix | `bitrix_webhook_url`, `bitrix_responsible_webhook_url`, `bitrix_portal_url`, `bitrix_enabled`, `bitrix_timeout_seconds`, `bitrix_refresh_ttl_minutes`, `bitrix_company_field_map_json`, `bitrix_enum_fields_json` | Production hiện lưu trong `Helpdesk Integrations Settings`; webhook là `Password` và chỉ đọc server-side. `bitrix_webhook_url` dùng lấy customer/company, `bitrix_responsible_webhook_url` dùng `user.get` lấy người phụ trách |
 | GitLab | `gitlab_token`, `gitlab_base_url` | Nếu bật GitLab popup/link issue |
 
 Không paste secret vào chat, ticket, Git, hoặc file markdown. Tài liệu này chỉ ghi tên key.
@@ -42,6 +42,7 @@ Trong script/handoff liên quan:
 
 - AI Server Scripts đọc `gemini_api_key`, `gemini_model`, `openrouter_api_key` từ Site Config trước; Settings DocType chỉ là fallback migration.
 - GitLab backend đọc `gitlab_token`, `gitlab_base_url` từ Site Config trước; `GitLab Settings.access_token` chỉ là fallback migration.
+- Bitrix Server Script production đọc `bitrix_webhook_url` và `bitrix_responsible_webhook_url` từ `Helpdesk Integrations Settings.get_password()`; HD Form Script chỉ gọi `haravan_bitrix_customer_profile`.
 - Client Script / HD Form Script chỉ gọi server API, không lưu token.
 
 ## Pattern Cho Server Script Safe Exec

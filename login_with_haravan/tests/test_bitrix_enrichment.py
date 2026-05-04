@@ -48,6 +48,66 @@ class BitrixConfigTest(unittest.TestCase):
         self.assertNotIn("bitrix-token", repr(status))
 
 
+class BitrixClientTest(unittest.TestCase):
+    @patch("login_with_haravan.engines.bitrix_api.requests.get")
+    def test_responsible_user_get_accepts_full_template_url(self, get_mock):
+        from login_with_haravan.engines.bitrix_api import BitrixClient
+
+        response = MagicMock()
+        response.json.return_value = {
+            "result": [
+                {
+                    "ID": "338",
+                    "ACTIVE": True,
+                    "EMAIL": "owner@example.com",
+                    "NAME": "Nguyen",
+                    "LAST_NAME": "An",
+                    "USER_TYPE": "employee",
+                }
+            ]
+        }
+        response.raise_for_status.return_value = None
+        get_mock.return_value = response
+
+        client = BitrixClient(
+            {
+                "responsible_webhook_url": (
+                    "https://haravan.bitrix24.vn/rest/57792/secret/user.get.json?ID={ASSIGNED_BY_ID}"
+                ),
+                "timeout_seconds": 7,
+            }
+        )
+
+        result = client.get_user("338")
+
+        self.assertEqual(result["EMAIL"], "owner@example.com")
+        get_mock.assert_called_once_with(
+            "https://haravan.bitrix24.vn/rest/57792/secret/user.get.json?ID=338",
+            timeout=7,
+        )
+
+    @patch("login_with_haravan.engines.bitrix_api.requests.get")
+    def test_responsible_user_get_adds_id_to_full_method_url_without_query(self, get_mock):
+        from login_with_haravan.engines.bitrix_api import BitrixClient
+
+        response = MagicMock()
+        response.json.return_value = {"result": []}
+        response.raise_for_status.return_value = None
+        get_mock.return_value = response
+
+        client = BitrixClient(
+            {
+                "responsible_webhook_url": "https://haravan.bitrix24.vn/rest/57792/secret/user.get.json",
+            }
+        )
+
+        self.assertIsNone(client.get_user("338"))
+        get_mock.assert_called_once_with(
+            "https://haravan.bitrix24.vn/rest/57792/secret/user.get.json?ID=338",
+            timeout=15,
+        )
+
+
 class CustomerEnrichmentTest(unittest.TestCase):
     def setUp(self):
         _reset_frappe_mock()
@@ -125,6 +185,125 @@ class CustomerEnrichmentTest(unittest.TestCase):
 
         self.assertTrue(result["success"])
         client.find_companies.assert_called_once()
+
+    @patch("login_with_haravan.engines.customer_enrichment.get_bitrix_config")
+    @patch("login_with_haravan.engines.customer_enrichment.BitrixClient")
+    def test_active_bitrix_responsible_updates_ticket_custom_responsible(self, client_cls, config_mock):
+        from login_with_haravan.engines.customer_enrichment import refresh_customer_profile
+
+        config_mock.return_value = {
+            "enabled": True,
+            "configured": True,
+            "responsible_configured": True,
+        }
+        client = client_cls.return_value
+        client.find_companies.return_value = [
+            {"ID": "42", "TITLE": "Bitrix Company", "ASSIGNED_BY_ID": "338"}
+        ]
+        client.find_contacts.return_value = []
+        client.get_user.return_value = {
+            "ID": "338",
+            "ACTIVE": True,
+            "EMAIL": "owner@example.com",
+            "NAME": "Nguyen",
+            "LAST_NAME": "An",
+            "USER_TYPE": "employee",
+        }
+        client.build_entity_url.side_effect = lambda entity, entity_id: f"https://bitrix/{entity}/{entity_id}/"
+
+        customer = MagicMock()
+        customer.name = "12345 - Shop"
+        customer.customer_name = "12345 - Shop"
+        customer.domain = "shop.myharavan.com"
+        customer.custom_haravan_orgid = 12345
+        ticket = MagicMock()
+        frappe_mock.get_doc.side_effect = [customer, ticket]
+
+        result = refresh_customer_profile("12345 - Shop", ticket="HD-1")
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["data"]["bitrix"]["responsible"]["name"], "Nguyen An")
+        self.assertEqual(result["data"]["bitrix"]["responsible"]["email"], "owner@example.com")
+        self.assertEqual(result["data"]["bitrix"]["responsible"]["user_type"], "employee")
+        client.get_user.assert_called_once_with("338")
+        ticket.set.assert_called_with("custom_responsible", "owner@example.com")
+        ticket.save.assert_called_with(ignore_permissions=True)
+
+    @patch("login_with_haravan.engines.customer_enrichment.get_bitrix_config")
+    @patch("login_with_haravan.engines.customer_enrichment.BitrixClient")
+    def test_active_bitrix_responsible_without_email_does_not_update_ticket(self, client_cls, config_mock):
+        from login_with_haravan.engines.customer_enrichment import refresh_customer_profile
+
+        config_mock.return_value = {
+            "enabled": True,
+            "configured": True,
+            "responsible_configured": True,
+        }
+        client = client_cls.return_value
+        client.find_companies.return_value = [
+            {"ID": "42", "TITLE": "Bitrix Company", "ASSIGNED_BY_ID": "338"}
+        ]
+        client.find_contacts.return_value = []
+        client.get_user.return_value = {
+            "ID": "338",
+            "ACTIVE": True,
+            "EMAIL": "",
+            "NAME": "Nguyen",
+            "LAST_NAME": "An",
+            "USER_TYPE": "employee",
+        }
+        client.build_entity_url.side_effect = lambda entity, entity_id: f"https://bitrix/{entity}/{entity_id}/"
+
+        customer = MagicMock()
+        customer.name = "12345 - Shop"
+        customer.customer_name = "12345 - Shop"
+        customer.domain = "shop.myharavan.com"
+        customer.custom_haravan_orgid = 12345
+        frappe_mock.get_doc.return_value = customer
+
+        result = refresh_customer_profile("12345 - Shop", ticket="HD-1")
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["data"]["bitrix"]["responsible"]["name"], "Nguyen An")
+        frappe_mock.get_doc.assert_called_once_with("HD Customer", "12345 - Shop")
+
+    @patch("login_with_haravan.engines.customer_enrichment.get_bitrix_config")
+    @patch("login_with_haravan.engines.customer_enrichment.BitrixClient")
+    def test_inactive_bitrix_responsible_does_not_update_ticket(self, client_cls, config_mock):
+        from login_with_haravan.engines.customer_enrichment import refresh_customer_profile
+
+        config_mock.return_value = {
+            "enabled": True,
+            "configured": True,
+            "responsible_configured": True,
+        }
+        client = client_cls.return_value
+        client.find_companies.return_value = [
+            {"ID": "42", "TITLE": "Bitrix Company", "ASSIGNED_BY_ID": "338"}
+        ]
+        client.find_contacts.return_value = []
+        client.get_user.return_value = {
+            "ID": "338",
+            "ACTIVE": False,
+            "EMAIL": "owner@example.com",
+            "NAME": "Nguyen",
+            "LAST_NAME": "An",
+            "USER_TYPE": "employee",
+        }
+        client.build_entity_url.side_effect = lambda entity, entity_id: f"https://bitrix/{entity}/{entity_id}/"
+
+        customer = MagicMock()
+        customer.name = "12345 - Shop"
+        customer.customer_name = "12345 - Shop"
+        customer.domain = "shop.myharavan.com"
+        customer.custom_haravan_orgid = 12345
+        frappe_mock.get_doc.return_value = customer
+
+        result = refresh_customer_profile("12345 - Shop", ticket="HD-1")
+
+        self.assertTrue(result["success"])
+        self.assertFalse(result["data"]["bitrix"]["responsible"]["active"])
+        frappe_mock.get_doc.assert_called_once_with("HD Customer", "12345 - Shop")
 
 
 if __name__ == "__main__":

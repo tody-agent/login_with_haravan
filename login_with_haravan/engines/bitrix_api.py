@@ -13,10 +13,15 @@ class BitrixClient:
         self.config = config
         self.timeout = int(config.get("timeout_seconds") or 15)
 
-    def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        url = self._method_url(method)
+    def call(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+        webhook_url: str | None = None,
+    ) -> dict[str, Any]:
+        url = self._method_url(method, webhook_url=webhook_url)
         payload = params or {}
-        if self.config.get("access_token") and not self.config.get("webhook_url"):
+        if self.config.get("access_token") and not (webhook_url or self.config.get("webhook_url")):
             payload = dict(payload)
             payload["auth"] = self.config["access_token"]
 
@@ -76,6 +81,41 @@ class BitrixClient:
                 return result
         return []
 
+    def get_user(self, user_id: str | int | None) -> dict[str, Any] | None:
+        if not user_id:
+            return None
+        responsible_webhook_url = self.config.get("responsible_webhook_url")
+        if not responsible_webhook_url:
+            return None
+
+        if "user.get" in responsible_webhook_url:
+            url = responsible_webhook_url.replace("{ASSIGNED_BY_ID}", quote(str(user_id)))
+            if "{ID}" in url:
+                url = url.replace("{ID}", quote(str(user_id)))
+            elif "ID=" not in url:
+                separator = "&" if "?" in url else "?"
+                url = f"{url}{separator}ID={quote(str(user_id))}"
+            response = requests.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+            result = data.get("result") if isinstance(data, dict) else data
+            if isinstance(result, list):
+                return result[0] if result else None
+            if isinstance(result, dict):
+                return result
+            return None
+
+        result = self.call(
+            "user.get",
+            {"ID": str(user_id)},
+            webhook_url=responsible_webhook_url,
+        ).get("result")
+        if isinstance(result, list):
+            return result[0] if result else None
+        if isinstance(result, dict):
+            return result
+        return None
+
     def build_entity_url(self, entity: str, entity_id: str | int | None) -> str | None:
         if not entity_id:
             return None
@@ -87,8 +127,8 @@ class BitrixClient:
             return None
         return urljoin(base.rstrip("/") + "/", f"crm/{quote(entity)}/details/{quote(str(entity_id))}/")
 
-    def _method_url(self, method: str) -> str:
-        webhook_url = self.config.get("webhook_url")
+    def _method_url(self, method: str, webhook_url: str | None = None) -> str:
+        webhook_url = webhook_url or self.config.get("webhook_url")
         if webhook_url:
             return urljoin(webhook_url.rstrip("/") + "/", f"{method}.json")
 
