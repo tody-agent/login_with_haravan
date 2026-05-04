@@ -202,11 +202,11 @@
       placeholder.selected = true;
       select.appendChild(placeholder);
 
-      // Add org options — display as "[OrgID] - [OrgName]" (matches HD Customer name)
+      // Add org options — display as "[OrgName] - [OrgID]" (matches HD Customer name)
       orgs.forEach(function (org) {
         var opt = document.createElement("option");
         opt.value = org.customer;
-        opt.textContent = org.customer || (org.orgid + " - " + org.orgname);
+        opt.textContent = org.customer || (org.orgname + " - " + org.orgid);
         opt.setAttribute("data-orgid", org.orgid || "");
         select.appendChild(opt);
       });
