@@ -50,8 +50,15 @@ def refresh_customer_profile(
     refresh: bool = True,
     ticket: str | int | None = None,
 ) -> dict[str, Any]:
+    frappe.has_permission("HD Customer", "read", hd_customer, throw=True)
     customer_doc = frappe.get_doc("HD Customer", hd_customer)
-    contact_doc = frappe.get_doc("Contact", contact) if contact else None
+
+    if contact:
+        frappe.has_permission("Contact", "read", contact, throw=True)
+        contact_doc = frappe.get_doc("Contact", contact)
+    else:
+        contact_doc = None
+
     config = get_bitrix_config()
     bitrix_data: dict[str, Any] = {
         "enabled": bool(config.get("enabled")),
