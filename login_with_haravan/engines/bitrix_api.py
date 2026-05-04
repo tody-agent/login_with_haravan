@@ -88,6 +88,23 @@ class BitrixClient:
         if not responsible_webhook_url:
             return None
 
+        if "user.get" in responsible_webhook_url:
+            url = responsible_webhook_url.replace("{ASSIGNED_BY_ID}", quote(str(user_id)))
+            if "{ID}" in url:
+                url = url.replace("{ID}", quote(str(user_id)))
+            elif "ID=" not in url:
+                separator = "&" if "?" in url else "?"
+                url = f"{url}{separator}ID={quote(str(user_id))}"
+            response = requests.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+            result = data.get("result") if isinstance(data, dict) else data
+            if isinstance(result, list):
+                return result[0] if result else None
+            if isinstance(result, dict):
+                return result
+            return None
+
         result = self.call(
             "user.get",
             {"ID": str(user_id)},

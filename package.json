@@ -5,6 +5,7 @@
   "scripts": {
     "test:gate": "./test_gate.sh",
     "test": "npm run test:gate",
+    "patch:bitrix-settings": "python3 scripts/patch_helpdesk_integrations_bitrix_settings.py",
     "patch:portal-fields": "python3 scripts/hide_customer_portal_internal_ticket_fields.py",
     "ship": "./ship.sh"
   },

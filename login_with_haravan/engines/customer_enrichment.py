@@ -120,8 +120,8 @@ def refresh_customer_profile(
         responsible = _resolve_responsible_user(client, company)
         if responsible:
             bitrix_data["responsible"] = responsible
-            if responsible.get("active") and responsible.get("name"):
-                _update_ticket_responsible(ticket, responsible["name"])
+            if responsible.get("active") and responsible.get("email"):
+                _update_ticket_responsible(ticket, responsible["email"])
 
     if bitrix_contact and contact_doc:
         contact_id = _entity_id(bitrix_contact)
@@ -238,12 +238,12 @@ def _resolve_responsible_user(client: BitrixClient, company: dict[str, Any]) -> 
     }
 
 
-def _update_ticket_responsible(ticket: str | int | None, responsible_name: str) -> bool:
-    if not ticket or not responsible_name:
+def _update_ticket_responsible(ticket: str | int | None, responsible_email: str) -> bool:
+    if not ticket or not responsible_email:
         return False
     try:
         ticket_doc = frappe.get_doc("HD Ticket", ticket)
-        _set_if_possible(ticket_doc, "custom_responsible", responsible_name)
+        _set_if_possible(ticket_doc, "custom_responsible", responsible_email)
         _save_doc(ticket_doc)
         return True
     except Exception:

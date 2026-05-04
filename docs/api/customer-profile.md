@@ -66,7 +66,7 @@ Endpoint production của Server Script `Profile - Bitrix Customer API`. Endpoin
 | `data.bitrix.lookup_value` | Candidate cuối cùng dùng cho match hoặc candidate cuối cùng đã thử |
 | `data.bitrix.company` | Dữ liệu công ty Bitrix đã normalize, gồm `bitrix_id`, `company_id`, `company_name`, HSI, Shopplan, `url` |
 | `data.bitrix.contact` | Dữ liệu contact từ Bitrix |
-| `data.bitrix.responsible` | User phụ trách resolve từ `ASSIGNED_BY_ID` qua `user.get`; nếu `active = true`, tên được ghi vào `HD Ticket.custom_responsible` |
+| `data.bitrix.responsible` | User phụ trách resolve từ `ASSIGNED_BY_ID` qua `user.get`; nếu `active = true`, `EMAIL` được ghi vào `HD Ticket.custom_responsible` |
 
 :::warning Bảo mật
 Bitrix token/webhook URL **không bao giờ** được trả về browser. Production đọc `bitrix_webhook_url` cho customer/company và `bitrix_responsible_webhook_url` cho responsible từ `Helpdesk Integrations Settings` bằng `get_password()`; mọi gọi Bitrix đều thực hiện server-side.
@@ -86,3 +86,31 @@ Làm mới hồ sơ theo `HD Customer` và optional `Contact`. Gọi lại Bitri
 |---------|------|:--------:|-------|
 | `hd_customer` | string | ✅ | Tên `HD Customer` |
 | `contact` | string | ❌ | Tên `Contact` (nếu muốn refresh cụ thể) |
+
+## `POST /api/method/haravan_bitrix_metajson_company_enrichment`
+
+Endpoint production dạng **Server Script**, dùng cho workflow metajson muốn làm giàu `HD Customer` theo Haravan `orgid` mà không cần thêm runtime logic vào custom app.
+
+Script được deploy từ:
+
+```text
+scripts/deploy_bitrix_metajson_enrichment.py
+```
+
+### Tham số
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---------|------|:--------:|-------|
+| `orgid` | string/int | ✅ | Haravan org id dùng để lookup Bitrix company |
+| `force` | 0/1 | ❌ | Bỏ qua TTL và ép kiểm tra Bitrix |
+| `hd_customer` | string | ❌ | Tên `HD Customer` nếu caller đã resolve sẵn |
+| `ticket` / `ticket_name` / `hd_ticket` | string | ❌ | Mã `HD Ticket` cần link vào `HD Customer` sau khi enrichment |
+
+### Hành vi guard
+
+- Không có `orgid` thì trả `missing_orgid`, không ghi Error Log.
+- Trong TTL `bitrix_refresh_ttl_minutes` thì trả `cached`, không gọi Bitrix.
+- Nếu Bitrix trả nhiều company, lấy record đầu tiên từ kết quả đã order theo `DATE_MODIFY DESC`.
+- Nếu `DATE_MODIFY` không đổi, chỉ touch `custom_bitrix_last_checked_at`; không save lại dữ liệu business.
+- Nếu dữ liệu mới hơn/khác, cập nhật `HD Customer` và upsert snapshot vào `HD Customer Data`.
+- Nếu truyền `ticket`, script set `HD Ticket.customer` về `HD Customer` đã resolve/tạo; nếu customer đã tồn tại thì chỉ link ticket.

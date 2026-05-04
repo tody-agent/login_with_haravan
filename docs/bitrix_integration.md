@@ -70,7 +70,7 @@ Tạo thêm một inbound webhook riêng để gọi `user.get`:
    ```
 5. Cấu hình URL này vào field **Bitrix Responsible Inbound Webhook URL** (`bitrix_responsible_webhook_url`) trong **Helpdesk Integrations Settings**.
 
-API chỉ dùng các trường `ACTIVE`, `EMAIL`, `NAME`, `LAST_NAME`, `USER_TYPE`. Nếu `ACTIVE = true`, hệ thống ghép `NAME + LAST_NAME` và cập nhật vào `HD Ticket.custom_responsible`.
+API chỉ dùng các trường `ACTIVE`, `EMAIL`, `NAME`, `LAST_NAME`, `USER_TYPE`. Nếu `ACTIVE = true`, hệ thống cập nhật `EMAIL` vào `HD Ticket.custom_responsible`.
 
 ### 3.3 Lấy danh sách custom fields của Company
 
@@ -126,6 +126,30 @@ Production `haravandesk.s.frappe.cloud` dùng Single DocType **Helpdesk Integrat
 /desk/helpdesk-integrations-settings
 ```
 
+Trong tab **Bitrix**, cấu hình phải tách rõ 2 webhook:
+
+1. **Bitrix Customer Inbound Webhook URL** (`bitrix_webhook_url`)
+   - Dùng để lấy hồ sơ customer/company.
+   - Bitrix method: `crm.company.list`, `crm.company.get`, và các method `crm.*` liên quan.
+   - Scope cần cấp trong Bitrix inbound webhook: `crm`.
+2. **Bitrix Responsible Inbound Webhook URL** (`bitrix_responsible_webhook_url`)
+   - Dùng để resolve `ASSIGNED_BY_ID` thành người phụ trách.
+   - Bitrix method: `user.get`.
+   - Scope cần cấp trong Bitrix inbound webhook: `user_basic`.
+   - Có thể nhập base webhook `https://haravan.bitrix24.vn/rest/57792/{new_secret_key}/` hoặc full template `https://haravan.bitrix24.vn/rest/57792/{new_secret_key}/user.get.json?ID={ASSIGNED_BY_ID}`.
+   - API test mẫu: mở full template với một `ASSIGNED_BY_ID` thật.
+
+Nếu production form vẫn chỉ hiện field cũ **Bitrix Webhook URL**, chạy script metadata patch:
+
+```bash
+export HARAVAN_HELP_SITE='https://haravandesk.s.frappe.cloud'
+export HARAVAN_HELP_API_KEY='...'
+export HARAVAN_HELP_API_SECRET='...'
+npm run patch:bitrix-settings
+```
+
+Script sẽ đổi label/description của webhook cũ thành customer webhook và tạo thêm field password responsible webhook. Script không in secret ra terminal và có backup metadata trong thư mục `backups/`.
+
 Các field Bitrix đang dùng:
 
 | Field | Type | Ghi chú |
@@ -168,7 +192,7 @@ Luồng hiện tại:
 3. Tạo danh sách ứng viên Company ID từ `HD Ticket.custom_haravan_profile_orgid`, `HD Ticket.custom_orgid`, `HD Ticket.custom_org_id`, `HD Customer.custom_haravan_orgid`, và phần số đầu trong tên `HD Customer` nếu có.
 4. Với từng ứng viên, gọi `crm.company.list` filter `UF_CRM_COMPANY_ID`. `ID` của Bitrix chỉ là internal id để mở link `/crm/company/details/{ID}/`.
 5. Nếu company có `ASSIGNED_BY_ID`, gọi tiếp webhook responsible bằng method `user.get` với `ID = ASSIGNED_BY_ID`.
-6. Nếu user trả về `ACTIVE = true`, cập nhật tên `NAME + LAST_NAME` vào `HD Ticket.custom_responsible`; nếu inactive/missing thì chỉ trả trạng thái trong response, không ghi field.
+6. Nếu user trả về `ACTIVE = true`, cập nhật `EMAIL` vào `HD Ticket.custom_responsible`; nếu inactive/missing/thiếu email thì chỉ trả trạng thái trong response, không ghi field.
 7. Nếu không match theo Company ID, fallback qua Contact email/phone và HD Customer domain.
 8. Trả response chuẩn `{"success": bool, "data": {}, "message": str}` với `data.bitrix.company` đã normalize theo `bitrix_company_field_map_json` và `data.bitrix.responsible` nếu có.
 

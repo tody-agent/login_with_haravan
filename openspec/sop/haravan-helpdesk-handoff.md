@@ -260,6 +260,7 @@ Cách cấu hình:
 
 - Nếu dùng webhook URL: cấu hình `bitrix_webhook_url` để lấy customer/company từ Bitrix CRM.
 - Nếu cần cập nhật người phụ trách từ `ASSIGNED_BY_ID`: cấu hình thêm `bitrix_responsible_webhook_url`, inbound webhook Bitrix có scope `user_basic`, dùng method `user.get`.
+- Trên `Helpdesk Integrations Settings`, label phải phân biệt rõ **Bitrix Customer Inbound Webhook URL** và **Bitrix Responsible Inbound Webhook URL**. Nếu production vẫn chỉ hiện field **Bitrix Webhook URL**, chạy `npm run patch:bitrix-settings` với `HARAVAN_HELP_SITE`, `HARAVAN_HELP_API_KEY`, `HARAVAN_HELP_API_SECRET`.
 - Nếu dùng OAuth/access token: cấu hình `bitrix_base_url` và `bitrix_access_token`.
 - `bitrix_enabled = 1` để bật enrichment.
 - `bitrix_timeout_seconds` mặc định code đang dùng là `15`.

@@ -117,7 +117,7 @@
           field("Company ID", company.id || customer.bitrix_company_id) +
           field("Company", company.title) +
           field("URL", company.url || customer.bitrix_company_url) +
-          field("Responsible", responsible.name) +
+          field("Responsible", responsible.email || responsible.name) +
           field("Responsible Status", responsible.status)
       ) +
       section(

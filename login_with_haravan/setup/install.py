@@ -46,7 +46,7 @@ HELPDESK_TICKET_RESPONSIBLE_FIELD = {
     "fieldtype": "Data",
     "insert_after": "contact",
     "read_only": 1,
-    "description": "Tên người phụ trách lấy từ Bitrix user.get theo ASSIGNED_BY_ID.",
+    "description": "Email người phụ trách lấy từ Bitrix user.get theo ASSIGNED_BY_ID.",
 }
 
 HELPDESK_INTEGRATIONS_BITRIX_FIELDS = [
@@ -57,7 +57,7 @@ HELPDESK_INTEGRATIONS_BITRIX_FIELDS = [
     },
     {
         "fieldname": "bitrix_enabled",
-        "label": "Enable Bitrix Customer Profile",
+        "label": "Bitrix Enabled",
         "fieldtype": "Check",
         "insert_after": "bitrix_customer_api_section",
         "default": "1",
@@ -69,9 +69,9 @@ HELPDESK_INTEGRATIONS_BITRIX_FIELDS = [
         "fieldtype": "Password",
         "insert_after": "bitrix_enabled",
         "description": (
-            "Webhook dùng để lấy customer/company từ Bitrix CRM, ví dụ "
-            "https://haravan.bitrix24.vn/rest/57792/{customer_secret_key}/. "
-            "Webhook này cần scope crm."
+            "Customer/company API. Dùng để gọi crm.company.* lấy hồ sơ khách hàng. "
+            "Tạo trong Bitrix24 > Applications > Developer resources > Inbound webhook "
+            "với scope crm. Ví dụ: https://haravan.bitrix24.vn/rest/57792/{customer_secret_key}/"
         ),
     },
     {
@@ -86,9 +86,10 @@ HELPDESK_INTEGRATIONS_BITRIX_FIELDS = [
         "fieldtype": "Password",
         "insert_after": "bitrix_responsible_api_section",
         "description": (
-            "Webhook riêng dùng để gọi user.get theo ASSIGNED_BY_ID, ví dụ "
-            "https://haravan.bitrix24.vn/rest/57792/{new_secret_key}/user.get.json?ID={ASSIGNED_BY_ID}. "
-            "Webhook này cần scope user_basic."
+            "Responsible/user API. Dùng để gọi user.get theo ASSIGNED_BY_ID và cập nhật "
+            "HD Ticket.custom_responsible khi ACTIVE=true. Tạo inbound webhook riêng trong "
+            "Bitrix24 với scope user_basic. Có thể nhập base webhook .../rest/57792/secret/ "
+            "hoặc full template .../user.get.json?ID={ASSIGNED_BY_ID}."
         ),
     },
     {
@@ -436,6 +437,11 @@ def configure_helpdesk_integrations_settings_metadata():
             HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE,
             fieldname,
         ):
+            if _ensure_standard_field_properties(
+                HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE,
+                field,
+            ):
+                changed_fields.append(fieldname)
             skipped_existing_fields.append(fieldname)
             continue
         if _ensure_custom_field(HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE, field):
@@ -625,6 +631,50 @@ def _doctype_has_field(doctype: str, fieldname: str) -> bool:
     except Exception:
         return False
     return False
+
+
+def _ensure_standard_field_properties(doctype: str, field: dict[str, object]) -> bool:
+    changed = False
+    fieldname = str(field["fieldname"])
+    for prop in ("label", "description"):
+        if prop in field and _ensure_property_setter(doctype, fieldname, prop, str(field[prop])):
+            changed = True
+    return changed
+
+
+def _ensure_property_setter(doctype: str, fieldname: str, prop: str, value: str) -> bool:
+    filters = {
+        "doc_type": doctype,
+        "doctype_or_field": "DocField",
+        "field_name": fieldname,
+        "property": prop,
+    }
+    existing = frappe.db.exists("Property Setter", filters)
+    doc = (
+        frappe.get_doc("Property Setter", existing)
+        if existing
+        else frappe.new_doc("Property Setter")
+    )
+    values = {
+        **filters,
+        "property_type": "Text",
+        "value": value,
+    }
+    changed = not bool(existing)
+    for key, new_value in values.items():
+        if getattr(doc, key, None) != new_value:
+            setattr(doc, key, new_value)
+            changed = True
+
+    if not changed:
+        return False
+
+    doc.flags.ignore_permissions = True
+    if existing:
+        doc.save(ignore_permissions=True)
+    else:
+        doc.insert(ignore_permissions=True)
+    return True
 
 
 def _ensure_ticket_template_field(template: str, row: dict[str, object]) -> bool:

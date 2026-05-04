@@ -635,6 +635,100 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         frappe_mock.clear_cache.assert_called_with(doctype="Helpdesk Integrations Settings")
         frappe_mock.db.commit.assert_called()
 
+    def test_setup_relabels_existing_standard_bitrix_settings_fields(self):
+        from login_with_haravan.setup import install
+
+        class FakePropertySetter:
+            def __init__(self):
+                self.flags = MagicMock()
+                self.inserted = False
+
+            def insert(self, ignore_permissions=False):
+                self.inserted = True
+
+        property_setters = []
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType" and filters == "Helpdesk Integrations Settings":
+                return True
+            if doctype == "Custom Field":
+                return None
+            if doctype == "Property Setter":
+                return None
+            return None
+
+        def has_field(fieldname):
+            return fieldname in {"bitrix_enabled", "bitrix_webhook_url"}
+
+        def new_doc(doctype):
+            if doctype == "Property Setter":
+                doc = FakePropertySetter()
+                property_setters.append(doc)
+                return doc
+            custom_field = MagicMock()
+            custom_field.insert.return_value = None
+            return custom_field
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.get_meta.return_value.has_field.side_effect = has_field
+        frappe_mock.new_doc.side_effect = new_doc
+
+        result = install.configure_helpdesk_integrations_settings_metadata()
+
+        self.assertIn("bitrix_webhook_url", result["data"]["changed_fields"])
+        labels = {
+            (doc.field_name, doc.property): doc.value
+            for doc in property_setters
+        }
+        self.assertEqual(
+            labels[("bitrix_webhook_url", "label")],
+            "Bitrix Customer Inbound Webhook URL",
+        )
+        self.assertIn("crm.company", labels[("bitrix_webhook_url", "description")])
+        self.assertEqual(
+            labels[("bitrix_enabled", "label")],
+            "Bitrix Enabled",
+        )
+
+    def test_bitrix_settings_patch_script_targets_customer_and_responsible_fields(self):
+        from scripts.patch_helpdesk_integrations_bitrix_settings import (
+            CUSTOM_FIELDS,
+            FIELD_PROPERTY_PATCHES,
+            custom_field_name,
+            property_setter_name,
+        )
+
+        property_labels = {
+            patch["fieldname"]: patch["label"]
+            for patch in FIELD_PROPERTY_PATCHES
+        }
+        custom_fieldnames = {
+            field["fieldname"]: field
+            for field in CUSTOM_FIELDS
+        }
+
+        self.assertEqual(
+            property_labels["bitrix_webhook_url"],
+            "Bitrix Customer Inbound Webhook URL",
+        )
+        self.assertIn("bitrix_responsible_webhook_url", custom_fieldnames)
+        self.assertEqual(
+            custom_fieldnames["bitrix_responsible_webhook_url"]["fieldtype"],
+            "Password",
+        )
+        self.assertIn(
+            "user.get",
+            custom_fieldnames["bitrix_responsible_webhook_url"]["description"],
+        )
+        self.assertEqual(
+            custom_field_name("bitrix_responsible_webhook_url"),
+            "Helpdesk Integrations Settings-bitrix_responsible_webhook_url",
+        )
+        self.assertEqual(
+            property_setter_name("bitrix_webhook_url", "label"),
+            "Helpdesk Integrations Settings-bitrix_webhook_url-label",
+        )
+
     def test_setup_makes_product_suggestion_optional_for_customer_template(self):
         from login_with_haravan.setup import install
 

@@ -1,17 +1,22 @@
 # Working Memory
 
-- Active Goal: Fix false migration crash on Frappe Cloud
-- Just Completed: Reverted modules.txt from "Login With Haravan" → "Login With Haravan"
-  to fix ModuleNotFoundError during bench migrate. Shipped to main (baf259d).
+- Active Goal: Bitrix metajson customer enrichment via Server Script
+- Just Completed: ✅ Reworked Option A away from custom app runtime into a
+  Desk-managed Server Script deploy helper; quality gate passed with pre-commit
+  plus 100 Python tests, 0 failures.
 - Next Actions:
-  - Trigger bench migrate on Frappe Cloud (haravandesk.s.frappe.cloud) to verify fix.
-  - Monitor migration job for successful completion.
-- Current Phase: fix shipped to GitHub main; awaiting Frappe Cloud redeploy
-- Working Context: GitLab popup uses `HD Form Script` `GitLab - Ticket Issue Button`
-  and Server Script API method `haravan_helpdesk.api.gitlab_popup_v2`. Add product
-  suggestion labels by returning `default_labels` from `init`, derived from
-  `HD Ticket.custom_product_suggestion` -> `HD Ticket Product Suggestion.gitlab_labels`,
-  while preserving existing base labels `helpdesk,customer-report`.
+  - Run `scripts/deploy_bitrix_metajson_enrichment.py` with Haravan Helpdesk
+    API credentials to create/update the Server Script and guard Custom Fields.
+  - Wire production metajson/Server Script to call API method
+    `haravan_bitrix_metajson_company_enrichment`.
+  - Smoke test with an orgid that exists in Bitrix and confirm `HD Customer Data`
+    snapshot plus guard fields.
+- Current Phase: verified
+- Working Context: Runtime logic lives in `Server Script` source embedded in
+  `scripts/deploy_bitrix_metajson_enrichment.py`, not in custom app Python. It
+  uses `bitrix_refresh_ttl_minutes`, cache lock by `orgid`,
+  `custom_bitrix_last_checked_at`, and Bitrix `DATE_MODIFY` to avoid loops and
+  repeated writes.
 
 - Previous Goal: CC Email Smoke Test on haravan.help completed
 - Just Completed: Ticket CC Emails Option B implemented and production smoke-tested on `0.1.6`
