@@ -18,6 +18,7 @@
   "use strict";
 
   var SELECTOR_ID = "haravan-org-selector";
+  var STATUS_ID = "haravan-org-status";
   var API_METHOD = "login_with_haravan.oauth.get_user_haravan_orgs";
   var POLL_INTERVAL = 500;
   var MAX_POLLS = 40;
@@ -132,22 +133,35 @@
     };
   }
 
+  function getOrgLabel(org) {
+    if (!org) return "";
+    return org.customer || (org.orgname + " - " + org.orgid);
+  }
+
+  function showSelectedCustomer(wrapper, org) {
+    var status = wrapper.querySelector("#" + STATUS_ID);
+    if (!status) {
+      status = document.createElement("div");
+      status.id = STATUS_ID;
+      wrapper.appendChild(status);
+    }
+
+    var label = getOrgLabel(org);
+    var orgid = org && org.orgid ? "OrgID: " + org.orgid : "";
+    status.textContent = label ? label + (orgid ? " | " + orgid : "") : "";
+    status.style.cssText =
+      "margin-top: 8px; font-size: 13px; color: var(--text-muted, #6b7280);";
+  }
+
   /* ── DOM injection ──────────────────────────────────────── */
 
   function injectSelector(orgs) {
     if (orgs.length === 0) return;
 
-    // Auto-select if only 1 org (backend handles it, but set for UX)
-    if (orgs.length === 1) {
-      window.__haravan_selected_customer = orgs[0].customer;
-      installXhrInterceptor();
-      return;
-    }
-
     // Don't inject twice
     if (document.getElementById(SELECTOR_ID)) return;
 
-    // Install XHR interceptor for multi-org
+    // Install XHR interceptor so the selected/visible customer is sent with the ticket.
     installXhrInterceptor();
 
     var pollCount = 0;
@@ -169,7 +183,7 @@
         return;
       }
 
-      // Create the selector container
+      // Create the customer context container
       var wrapper = document.createElement("div");
       wrapper.id = SELECTOR_ID;
       wrapper.style.cssText =
@@ -178,11 +192,20 @@
         "border-radius: 8px; border: 1px solid var(--border-color, #d1d8dd);";
 
       var label = document.createElement("label");
-      label.textContent = "Tổ chức / Cửa hàng Haravan";
+      label.textContent = "HD Customer nhận ticket";
       label.style.cssText =
         "display: block; font-weight: 600; font-size: 13px; " +
         "margin-bottom: 6px; color: var(--text-color, #333);";
       label.setAttribute("for", SELECTOR_ID + "-select");
+
+      wrapper.appendChild(label);
+
+      if (orgs.length === 1) {
+        window.__haravan_selected_customer = orgs[0].customer;
+        showSelectedCustomer(wrapper, orgs[0]);
+        formContainer.insertBefore(wrapper, formContainer.firstChild);
+        return;
+      }
 
       var select = document.createElement("select");
       select.id = SELECTOR_ID + "-select";
@@ -197,7 +220,7 @@
       // Placeholder option
       var placeholder = document.createElement("option");
       placeholder.value = "";
-      placeholder.textContent = "\u2014 Ch\u1ECDn c\u1EEDa h\u00E0ng \u2014";
+      placeholder.textContent = "\u2014 Ch\u1ECDn HD Customer \u2014";
       placeholder.disabled = true;
       placeholder.selected = true;
       select.appendChild(placeholder);
@@ -208,16 +231,20 @@
         opt.value = org.customer;
         opt.textContent = org.customer || (org.orgname + " - " + org.orgid);
         opt.setAttribute("data-orgid", org.orgid || "");
+        opt._haravanOrg = org;
         select.appendChild(opt);
       });
 
       // On selection change
       select.addEventListener("change", function () {
         window.__haravan_selected_customer = this.value;
+        showSelectedCustomer(wrapper, this.options[this.selectedIndex]._haravanOrg);
       });
 
-      wrapper.appendChild(label);
       wrapper.appendChild(select);
+      select.selectedIndex = 1;
+      window.__haravan_selected_customer = orgs[0].customer;
+      showSelectedCustomer(wrapper, orgs[0]);
 
       // Insert at the top of the form
       formContainer.insertBefore(wrapper, formContainer.firstChild);

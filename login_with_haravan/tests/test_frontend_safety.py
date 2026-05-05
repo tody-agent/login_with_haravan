@@ -53,3 +53,14 @@ class TestFrontendSafety(unittest.TestCase):
         self.assertIn("redirect_uri", content)
         self.assertIn("frappe.cloud", content)
         self.assertIn("login_with_haravan.oauth.login_via_haravan", content)
+
+    def test_haravan_org_selector_shows_customer_context_for_single_and_multi_org(self):
+        """The portal ticket form must show which HD Customer will receive the ticket."""
+        content = self.read_js("haravan_org_selector.js")
+
+        self.assertIn("HD Customer nhận ticket", content)
+        self.assertIn("showSelectedCustomer(wrapper, orgs[0])", content)
+        self.assertIn("Ch\\u1ECDn HD Customer", content)
+        self.assertIn("select.selectedIndex = 1", content)
+        self.assertIn("window.__haravan_selected_customer = orgs[0].customer", content)
+        self.assertIn("showSelectedCustomer(wrapper, this.options[this.selectedIndex]._haravanOrg)", content)
