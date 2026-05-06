@@ -15,6 +15,7 @@ HELPDESK_PRODUCT_SUGGESTION_DOCTYPE = "HD Ticket Product Suggestion"
 HELPDESK_TICKET_DOCTYPE = "HD Ticket"
 HELPDESK_INTEGRATIONS_SETTINGS_DOCTYPE = "Helpdesk Integrations Settings"
 HELPDESK_TICKET_TEMPLATE = "Default"
+HELPDESK_TICKET_CUSTOMER_FIELDNAME = "customer"
 HELPDESK_PRODUCT_SUGGESTION_FIELDNAME = "custom_product_suggestion"
 HELPDESK_TICKET_RESPONSIBLE_FIELDNAME = "custom_responsible"
 ONBOARDING_SERVICE_INTERNAL_TYPE = "Onboarding Service"
@@ -38,6 +39,13 @@ HELPDESK_TICKET_CC_TEMPLATE_FIELD = {
     "required": 0,
     "hide_from_customer": 1,
     "placeholder": "abc@company.com, xyz@company.com",
+}
+
+HELPDESK_TICKET_CUSTOMER_TEMPLATE_FIELD = {
+    "fieldname": HELPDESK_TICKET_CUSTOMER_FIELDNAME,
+    "required": 0,
+    "hide_from_customer": 0,
+    "placeholder": "Chọn HD Customer nhận ticket",
 }
 
 HELPDESK_TICKET_RESPONSIBLE_FIELD = {
@@ -256,6 +264,7 @@ def after_install():
     configure_customer_profile_metadata()
     configure_helpdesk_integrations_settings_metadata()
     configure_helpdesk_product_suggestion_permissions()
+    configure_ticket_customer_template_metadata()
     configure_helpdesk_product_suggestion_customer_optional()
     configure_ticket_cc_metadata()
     configure_onboarding_service_ticket_metadata()
@@ -266,6 +275,7 @@ def after_migrate():
     configure_customer_profile_metadata()
     configure_helpdesk_integrations_settings_metadata()
     configure_helpdesk_product_suggestion_permissions()
+    configure_ticket_customer_template_metadata()
     configure_helpdesk_product_suggestion_customer_optional()
     configure_ticket_cc_metadata()
     configure_onboarding_service_ticket_metadata()
@@ -459,6 +469,39 @@ def configure_helpdesk_integrations_settings_metadata():
             "skipped_existing_fields": skipped_existing_fields,
         },
         "message": "Helpdesk Integrations Settings Bitrix fields configured.",
+    }
+
+
+@frappe.whitelist()
+def configure_ticket_customer_template_metadata():
+    """Show the HD Customer field on the customer portal ticket template."""
+    frappe.only_for("System Manager")
+    if not frappe.db.exists("DocType", HELPDESK_TICKET_DOCTYPE):
+        return {
+            "success": True,
+            "data": {"configured": False, "reason": "doctype_missing"},
+            "message": "HD Ticket DocType is not installed.",
+        }
+
+    template_row_changed = _ensure_ticket_template_field(
+        HELPDESK_TICKET_TEMPLATE,
+        HELPDESK_TICKET_CUSTOMER_TEMPLATE_FIELD,
+    )
+
+    if template_row_changed:
+        frappe.clear_cache(doctype=HELPDESK_TICKET_DOCTYPE)
+        frappe.clear_cache(doctype="HD Ticket Template")
+        frappe.db.commit()
+
+    return {
+        "success": True,
+        "data": {
+            "configured": True,
+            "fieldname": HELPDESK_TICKET_CUSTOMER_FIELDNAME,
+            "template": HELPDESK_TICKET_TEMPLATE,
+            "template_row_changed": template_row_changed,
+        },
+        "message": "HD Customer is visible on customer ticket templates.",
     }
 
 

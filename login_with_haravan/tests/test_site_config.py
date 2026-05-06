@@ -584,6 +584,47 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         self.assertTrue(template.saved)
         frappe_mock.db.commit.assert_called()
 
+    def test_setup_shows_customer_on_customer_ticket_template(self):
+        from login_with_haravan.setup import install
+
+        class FakeTemplate:
+            def __init__(self):
+                self.rows = []
+                self.saved = False
+                self.flags = MagicMock()
+
+            def append(self, fieldname, row):
+                self.rows.append((fieldname, row))
+
+            def save(self, ignore_permissions=False):
+                self.saved = True
+
+        template = FakeTemplate()
+
+        def exists(doctype, filters=None):
+            if doctype == "DocType" and filters == "HD Ticket":
+                return True
+            if doctype == "HD Ticket Template" and filters == "Default":
+                return True
+            if doctype == "HD Ticket Template Field":
+                return None
+            return None
+
+        frappe_mock.db.exists.side_effect = exists
+        frappe_mock.get_doc.return_value = template
+
+        result = install.configure_ticket_customer_template_metadata()
+
+        self.assertTrue(result["data"]["template_row_changed"])
+        self.assertEqual(result["data"]["fieldname"], "customer")
+        self.assertEqual(template.rows[0][0], "fields")
+        self.assertEqual(template.rows[0][1]["fieldname"], "customer")
+        self.assertEqual(template.rows[0][1]["required"], 0)
+        self.assertEqual(template.rows[0][1]["hide_from_customer"], 0)
+        self.assertEqual(template.rows[0][1]["placeholder"], "Chọn HD Customer nhận ticket")
+        self.assertTrue(template.saved)
+        frappe_mock.db.commit.assert_called()
+
     def test_setup_creates_helpdesk_integrations_bitrix_config_fields(self):
         from login_with_haravan.setup import install
 
