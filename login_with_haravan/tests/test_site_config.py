@@ -623,6 +623,10 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         self.assertEqual(template.rows[0][1]["required"], 0)
         self.assertEqual(template.rows[0][1]["hide_from_customer"], 0)
         self.assertEqual(template.rows[0][1]["placeholder"], "Chọn HD Customer nhận ticket")
+        self.assertEqual(
+            template.rows[0][1]["url_method"],
+            "login_with_haravan.oauth.get_user_haravan_org_options",
+        )
         self.assertTrue(template.saved)
         frappe_mock.db.commit.assert_called()
 

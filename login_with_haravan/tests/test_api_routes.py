@@ -25,6 +25,7 @@ class TestApiRoutes(unittest.TestCase):
 
         # Check if the required methods exist
         self.assertIn("login_via_haravan", function_names)
+        self.assertIn("get_user_haravan_org_options", function_names)
 
         # Verify that they are whitelisted
         for func in functions:

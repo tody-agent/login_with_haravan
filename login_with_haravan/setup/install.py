@@ -47,6 +47,7 @@ HELPDESK_TICKET_CUSTOMER_TEMPLATE_FIELD = {
     "required": 0,
     "hide_from_customer": 0,
     "placeholder": "Chọn HD Customer nhận ticket",
+    "url_method": "login_with_haravan.oauth.get_user_haravan_org_options",
 }
 
 HELPDESK_TICKET_RESPONSIBLE_FIELD = {

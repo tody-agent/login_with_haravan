@@ -176,25 +176,94 @@ def upsert_haravan_account_link(user: str, profile: dict, hd_customer: str | Non
 
 @frappe.whitelist()
 def get_user_haravan_orgs():
-    """Return list of HD Customers linked to current user via Haravan Account Link.
+    """Return HD Customers linked to current user via Haravan or Contact links.
 
-    Used by the portal frontend to populate the org picker dropdown.
+    Used by the portal frontend to populate the org picker/dropdown.
     """
     user = frappe.session.user
     if not user or user == "Guest":
         return []
+
+    orgs_by_customer = {}
 
     links = frappe.get_all(
         "Haravan Account Link",
         filters={"user": user},
         fields=["haravan_orgid", "haravan_orgname", "hd_customer"],
     )
-    return [
-        {
+    for link in links:
+        if not link.hd_customer:
+            continue
+        orgs_by_customer[link.hd_customer] = {
             "orgid": link.haravan_orgid,
             "orgname": link.haravan_orgname,
             "customer": link.hd_customer,
+            "label": link.hd_customer,
+            "value": link.hd_customer,
         }
-        for link in links
-        if link.hd_customer
+
+    for link in _get_contact_hd_customer_links(user):
+        customer = link.get("link_name")
+        if not customer or customer in orgs_by_customer:
+            continue
+        label = link.get("link_title") or customer
+        orgs_by_customer[customer] = {
+            "orgid": _extract_orgid(customer),
+            "orgname": _extract_orgname(label),
+            "customer": customer,
+            "label": label,
+            "value": customer,
+        }
+
+    return list(orgs_by_customer.values())
+
+
+@frappe.whitelist()
+def get_user_haravan_org_options():
+    """Return Autocomplete options for the portal HD Customer field."""
+    return [
+        {
+            "label": org["label"],
+            "value": org["value"],
+            "description": org.get("orgid") or "",
+        }
+        for org in get_user_haravan_orgs()
+        if org.get("value")
     ]
+
+
+def _get_contact_hd_customer_links(user: str) -> list[dict]:
+    emails = {str(user or "").strip(), str(user or "").strip().lower()}
+    emails = {email for email in emails if email}
+    if not emails:
+        return []
+
+    contact_rows = frappe.get_all(
+        "Contact Email",
+        filters={"email_id": ["in", list(emails)]},
+        fields=["parent"],
+    )
+    contact_names = sorted({row.parent for row in contact_rows if row.parent})
+    if not contact_names:
+        return []
+
+    return frappe.get_all(
+        "Dynamic Link",
+        filters={
+            "parenttype": "Contact",
+            "parent": ["in", contact_names],
+            "link_doctype": "HD Customer",
+        },
+        fields=["link_name", "link_title"],
+        order_by="idx asc",
+    )
+
+
+def _extract_orgid(customer: str) -> str:
+    parts = str(customer or "").rsplit(" - ", 1)
+    return parts[1].strip() if len(parts) == 2 else ""
+
+
+def _extract_orgname(customer: str) -> str:
+    parts = str(customer or "").rsplit(" - ", 1)
+    return parts[0].strip() if parts else str(customer or "").strip()
