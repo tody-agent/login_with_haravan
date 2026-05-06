@@ -80,7 +80,8 @@ Tất cả HD Form Script hiện đang **enabled**. Đây là các script UI tro
 | `Auth - Inside Customer Enrich` | DocType Event | `HD Ticket / Before Save` | ✅ | Làm giàu ticket/customer từ Inside/nguồn nội bộ |
 | `Profile - Bitrix Customer API` | API | `haravan_bitrix_customer_profile` | ✅ | Lấy Customer Profile từ Bitrix theo nhu cầu agent, đọc webhook từ `Helpdesk Integrations Settings` và normalize HSI/Shopplan |
 | `Metajson - Bitrix Company Enrichment API` | API | `haravan_bitrix_metajson_company_enrichment` | ✅ | Làm giàu `HD Customer` và link `HD Ticket` từ metajson/orgid bằng Bitrix company data |
-| `Profile - Ticket Routing` | DocType Event | `HD Ticket / Before Save` | ✅ | Routing ticket theo profile/segment khách hàng |
+| `Profile - Ticket Routing` | DocType Event | `HD Ticket / Before Insert` | ✅ | Routing ticket mới theo HD Customer segment/shopplan |
+| `Profile - Ticket Round Robin Assignment` | DocType Event | `HD Ticket / After Insert` | ✅ | Assign round-robin cho ticket vừa được auto-route |
 | `Onboarding - Agent Ticket API` | API | `haravan_agent_create_customer_ticket` | ✅ | Backend cho dialog agent tạo ticket cho khách |
 | `Onboarding - Create Ticket API` | API | `haravan_helpdesk.api.create_onboarding_ticket` | ✅ | Tạo onboarding ticket từ API |
 | `GitLab - Ticket Issue API` | API | `haravan_helpdesk.api.gitlab_popup_v2` | ✅ | Backend API cho popup GitLab |
@@ -127,6 +128,7 @@ Tất cả HD Form Script hiện đang **enabled**. Đây là các script UI tro
 | `Haravan Inside Enrichment` | `Auth - Inside Customer Enrich` |
 | `Haravan Bitrix Customer Profile API` | `Profile - Bitrix Customer API` |
 | `HD Ticket - Haravan Customer Profile Routing` | `Profile - Ticket Routing` |
+| `HD Ticket - Round Robin Assignment` | `Profile - Ticket Round Robin Assignment` |
 | `Haravan API Create Onboarding Ticket` | `Onboarding - Create Ticket API` |
 | `HD GitLab Popup API v2` | `GitLab - Ticket Issue API` |
 | `generate_ai_summary` | `AI - Summary API` |

@@ -172,45 +172,45 @@ Response trả thêm:
 
 ### 7.2 Routing ticket theo segment
 
-Server Script `Profile - Ticket Routing` chạy ở `HD Ticket / Before Save`.
+Server Script `Profile - Ticket Routing` chạy ở `HD Ticket / Before Insert`.
 
 Thứ tự lấy segment:
 
 1. Ưu tiên `HD Customer.custom_customer_segment`.
-2. Nếu ticket cache đúng orgid, dùng `HD Ticket.custom_customer_segment`.
-3. Nếu chưa có segment, gọi Bitrix theo `custom_orgid`.
-4. Nếu không có orgid, Bitrix tắt, thiếu config, không tìm thấy hoặc lỗi API, default về `SME`.
+2. Nếu ticket chưa link `HD Customer`, dùng `HD Ticket.custom_customer_segment`.
+3. Nếu không có segment hoặc shopplan, default về `SME`.
 
 Quy tắc segment hiện tại:
 
-| Điều kiện Bitrix | Segment |
+| Điều kiện | Segment |
 | --- | --- |
-| `UF_CRM_CURRENT_SHOPPLAN` chứa `grow` hoặc `scale` | `Medium` |
-| `UF_CRM_LAST_HSI_SEGMENT = HSI_500+` | `Medium` |
+| `custom_customer_segment = Medium` | `Medium` |
 | Còn lại | `SME` |
 
 Routing team:
 
-| Segment | Agent group |
+| Segment / Shopplan | Agent group |
 | --- | --- |
-| `Medium` | `Medium` |
+| `Medium` + shopplan chứa `scale` | `Medium - Scale` |
+| `Medium` + shopplan chứa `grow` | `Medium - Grow` |
 | `SME` | `CS 60p` |
 
-Script chỉ tự đổi `agent_group` nếu group hiện tại nằm trong danh sách auto-routed: rỗng, `Medium`, `CS 60p`, `After Sales`, `Service Ecom`. Nếu agent đã gán group thủ công ngoài danh sách này, script giữ nguyên group và chỉ cập nhật lý do routing.
+Script chỉ tự đổi `agent_group` khi ticket mới chưa có `agent_group`. Nếu agent/API đã gán group, script giữ nguyên và ghi rõ `custom_haravan_routing_reason`.
+
+Server Script `Profile - Ticket Round Robin Assignment` chạy ở `HD Ticket / After Insert`.
+Script này chỉ assign ticket có `agent_group` thuộc `Medium - Scale`, `Medium - Grow`, hoặc `CS 60p` và `custom_haravan_routing_reason` bắt đầu bằng `Auto-routed:`. Nếu ticket đã có `ToDo` đang mở thì không tạo assignment mới.
 
 Các field ticket liên quan:
 
 | Field | Ý nghĩa |
 | --- | --- |
 | `custom_customer_segment` | Segment cuối cùng dùng cho routing |
-| `custom_haravan_profile_orgid` | Orgid đã dùng khi profile/routing chạy |
-| `custom_haravan_profile_status` | `Complete`, `Skipped`, `Missing OrgID`, `API Error` |
-| `custom_haravan_profile_error` | Lý do skip/lỗi ngắn gọn |
+| `custom_haravan_profile_status` | `Complete` khi auto-route thành công |
+| `custom_haravan_profile_error` | Lý do lỗi ngắn gọn nếu có |
 | `custom_haravan_profile_checked_at` | Thời điểm kiểm tra |
-| `custom_haravan_service_plan` | Shopplan hiện tại từ Bitrix |
+| `custom_haravan_service_plan` | Shopplan đọc từ `HD Customer.custom_shopplan_name` |
 | `custom_shopplan` | Nhóm shopplan rút gọn |
-| `custom_haravan_hsi_segment` | HSI segment hiện tại |
-| `custom_haravan_routing_reason` | Lý do route, gồm source và dữ liệu Bitrix |
+| `custom_haravan_routing_reason` | Lý do route/skip, gồm source và target team |
 
 ## 8. Popup Customer Profit/Profile
 

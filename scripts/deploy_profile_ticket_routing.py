@@ -13,208 +13,182 @@ import requests
 
 
 SERVER_SCRIPT_NAME = "Profile - Ticket Routing"
+ASSIGNMENT_SERVER_SCRIPT_NAME = "Profile - Ticket Round Robin Assignment"
 REFERENCE_DOCTYPE = "HD Ticket"
-DOCTYPE_EVENT = "Before Save"
+DOCTYPE_EVENT = "Before Insert"
+ASSIGNMENT_DOCTYPE_EVENT = "After Insert"
 
 
 SERVER_SCRIPT = r'''# Server Script - DocType Event: HD Ticket
-# Event: Before Save
-# Purpose: Route tickets by HD Customer/Bitrix SME/Medium segment without adding a competing script.
+# Event: Before Insert
+# Purpose: Route new tickets with blank agent_group by HD Customer segment and shopplan.
 # Safe-exec style: top-level only; helper functions cannot reliably see each other in DocType Event scripts.
 
 SCRIPT_TITLE = "Profile - Ticket Routing"
-SETTINGS_DOCTYPE = "Helpdesk Integrations Settings"
-AUTO_ROUTED_AGENT_GROUPS = ["", "Medium", "CS 60p", "After Sales", "Service Ecom"]
-MEDIUM_TEAM = "Medium"
-SME_TEAM = "CS 60p"
+MEDIUM_SCALE_TEAM = "Medium - Scale"
+MEDIUM_GROW_TEAM = "Medium - Grow"
+DEFAULT_TEAM = "CS 60p"
 
-org_id = str(doc.get("custom_orgid") or "").strip()
+# Manual/API agent_group already set; routing skipped.
+current_agent_group = str(doc.get("agent_group") or "").strip()
 customer_name = str(doc.get("customer") or "").strip()
-profile_org_id = str(doc.get("custom_haravan_profile_orgid") or "").strip()
 
-ticket_segment_value = str(doc.get("custom_customer_segment") or "").strip()
-ticket_segment_key = ticket_segment_value.lower().replace(" ", "").replace("-", "").replace("_", "")
-ticket_segment = ""
-if ticket_segment_key == "medium":
-    ticket_segment = "Medium"
-elif ticket_segment_key == "sme":
+if not current_agent_group:
+    customer_segment_value = ""
+    shopplan_name = ""
+    source = "default"
+
+    if customer_name and frappe.db.exists("HD Customer", customer_name):
+        customer_segment_value = str(frappe.db.get_value("HD Customer", customer_name, "custom_customer_segment") or "").strip()
+        shopplan_name = str(frappe.db.get_value("HD Customer", customer_name, "custom_shopplan_name") or "").strip()
+        source = "hd_customer"
+    else:
+        customer_segment_value = str(doc.get("custom_customer_segment") or "").strip()
+        source = "ticket"
+
+    segment_key = customer_segment_value.lower().replace(" ", "").replace("-", "").replace("_", "")
+    shopplan_key = shopplan_name.lower()
+    target_team = DEFAULT_TEAM
     ticket_segment = "SME"
+    ticket_shopplan = "SME"
 
-segment = ""
-source = ""
-reason_detail = ""
+    if segment_key == "medium":
+        ticket_segment = "Medium"
+        if "scale" in shopplan_key:
+            target_team = MEDIUM_SCALE_TEAM
+            ticket_shopplan = "Medium Scale"
+        elif "grow" in shopplan_key:
+            target_team = MEDIUM_GROW_TEAM
+            ticket_shopplan = "Medium Grow"
 
-if customer_name and frappe.db.exists("HD Customer", customer_name):
-    hd_customer_segment_value = str(frappe.db.get_value("HD Customer", customer_name, "custom_customer_segment") or "").strip()
-    hd_customer_segment_key = hd_customer_segment_value.lower().replace(" ", "").replace("-", "").replace("_", "")
-    if hd_customer_segment_key == "medium":
-        segment = "Medium"
-        source = "hd_customer"
-        reason_detail = "HD Customer.custom_customer_segment=Medium."
-    elif hd_customer_segment_key == "sme":
-        segment = "SME"
-        source = "hd_customer"
-        reason_detail = "HD Customer.custom_customer_segment=SME."
+    reason_detail = "Customer Segment=" + (customer_segment_value or "-") + ", Shopplan=" + (shopplan_name or "-") + ", Source=" + source + "."
+    routing_reason_prefix = "Auto-routed:"
+    reason = routing_reason_prefix + " " + reason_detail + " Target team=" + target_team + "."
 
-if not segment and org_id and ticket_segment and profile_org_id == org_id:
-    segment = ticket_segment
-    source = "ticket_cache"
-    reason_detail = "Cached ticket segment for OrgID " + org_id + "."
-
-if not segment:
-    if not org_id:
-        segment = "SME"
-        source = "missing_orgid"
-        reason_detail = "Ticket has no OrgID; defaulted to SME."
-        if str(doc.get("custom_haravan_profile_status") or "").strip() != "Missing OrgID":
-            doc.custom_haravan_profile_status = "Missing OrgID"
-        doc.custom_haravan_profile_error = "Ticket has no OrgID yet; defaulted to SME routing."
-    else:
-        settings = None
-        try:
-            settings = frappe.get_doc(SETTINGS_DOCTYPE)
-        except Exception:
-            settings = None
-
-        bitrix_enabled = True
-        bitrix_webhook_url = ""
-        if settings:
-            try:
-                bitrix_enabled = str(settings.get("bitrix_enabled") if settings.get("bitrix_enabled") is not None else "1").strip().lower() in ("1", "true", "yes", "on", "enabled")
-            except Exception:
-                bitrix_enabled = True
-            try:
-                bitrix_webhook_url = settings.get_password("bitrix_webhook_url") or ""
-            except Exception:
-                bitrix_webhook_url = ""
-            if not bitrix_webhook_url:
-                try:
-                    bitrix_webhook_url = settings.get("bitrix_webhook_url") or ""
-                except Exception:
-                    bitrix_webhook_url = ""
-        if not bitrix_webhook_url:
-            try:
-                bitrix_webhook_url = frappe.db.get_single_value(SETTINGS_DOCTYPE, "bitrix_webhook_url") or ""
-            except Exception:
-                bitrix_webhook_url = ""
-
-        if not bitrix_enabled:
-            segment = "SME"
-            source = "bitrix_disabled"
-            reason_detail = "Bitrix disabled; defaulted to SME."
-            doc.custom_haravan_profile_status = "Skipped"
-            doc.custom_haravan_profile_error = "Bitrix enrichment is disabled; defaulted to SME routing."
-        elif not bitrix_webhook_url:
-            segment = "SME"
-            source = "bitrix_missing_config"
-            reason_detail = "Bitrix webhook missing; defaulted to SME."
-            doc.custom_haravan_profile_status = "Skipped"
-            doc.custom_haravan_profile_error = "Bitrix webhook is missing; defaulted to SME routing."
-        else:
-            company_rows = []
-            company_error = ""
-            url = bitrix_webhook_url.rstrip("/") + "/crm.company.list.json"
-            payload = {
-                "FILTER": {"UF_CRM_COMPANY_ID": org_id},
-                "SELECT": [
-                    "ID",
-                    "TITLE",
-                    "UF_CRM_COMPANY_ID",
-                    "UF_CRM_CURRENT_SHOPPLAN",
-                    "UF_CRM_LAST_HSI_SEGMENT",
-                    "UF_CRM_CURRENT_HSI_SEGMENT",
-                ],
-                "ORDER": {"DATE_MODIFY": "DESC"},
-            }
-            try:
-                result = frappe.make_post_request(url, headers={"Content-Type": "application/json"}, json=payload)
-                if isinstance(result, str):
-                    result = frappe.parse_json(result)
-                if isinstance(result, dict):
-                    company_rows = result.get("result") or []
-                if not isinstance(company_rows, list):
-                    company_rows = []
-            except Exception as exc:
-                company_error = str(exc)[:500]
-                frappe.log_error("Cannot fetch Bitrix company for OrgID " + org_id + "\n" + company_error, SCRIPT_TITLE)
-
-            if company_rows:
-                company = company_rows[0]
-                current_shopplan = str(company.get("UF_CRM_CURRENT_SHOPPLAN") or "").strip()
-                current_shopplan_key = current_shopplan.lower()
-                last_hsi_segment = str(company.get("UF_CRM_LAST_HSI_SEGMENT") or "").strip()
-                current_hsi_segment = str(company.get("UF_CRM_CURRENT_HSI_SEGMENT") or "").strip()
-
-                if "grow" in current_shopplan_key or "scale" in current_shopplan_key:
-                    segment = "Medium"
-                elif last_hsi_segment == "HSI_500+":
-                    segment = "Medium"
-                else:
-                    segment = "SME"
-                source = "bitrix"
-                reason_detail = "Bitrix profile: Current Shopplan=" + (current_shopplan or "-") + ", Last HSI Segment=" + (last_hsi_segment or "-") + "."
-                doc.custom_haravan_profile_status = "Complete"
-                doc.custom_haravan_profile_error = ""
-                doc.custom_haravan_profile_orgid = org_id
-                if current_shopplan:
-                    doc.custom_haravan_service_plan = current_shopplan
-                    if "grow" in current_shopplan_key:
-                        doc.custom_shopplan = "Medium Grow"
-                    elif "scale" in current_shopplan_key:
-                        doc.custom_shopplan = "Medium Scale"
-                    else:
-                        doc.custom_shopplan = "SME"
-                if current_hsi_segment:
-                    doc.custom_haravan_hsi_segment = current_hsi_segment
-            elif company_error:
-                segment = "SME"
-                source = "bitrix_error"
-                reason_detail = "Bitrix error; defaulted to SME."
-                doc.custom_haravan_profile_status = "API Error"
-                doc.custom_haravan_profile_error = company_error
-                doc.custom_haravan_profile_orgid = org_id
-            else:
-                segment = "SME"
-                source = "bitrix_not_found"
-                reason_detail = "No Bitrix company found for OrgID " + org_id + "; defaulted to SME."
-                doc.custom_haravan_profile_status = "Complete"
-                doc.custom_haravan_profile_error = "No Bitrix company found; defaulted to SME routing."
-                doc.custom_haravan_profile_orgid = org_id
-
-if segment:
-    if str(doc.get("custom_customer_segment") or "").strip() != segment:
-        doc.custom_customer_segment = segment
-    if org_id and str(doc.get("custom_haravan_profile_orgid") or "").strip() != org_id:
-        doc.custom_haravan_profile_orgid = org_id
-    doc.custom_haravan_profile_checked_at = frappe.utils.now()
-
-    if source != "hd_customer" and customer_name and frappe.db.exists("HD Customer", customer_name):
-        try:
-            current_customer_segment_value = str(frappe.db.get_value("HD Customer", customer_name, "custom_customer_segment") or "").strip()
-            current_customer_segment_key = current_customer_segment_value.lower().replace(" ", "").replace("-", "").replace("_", "")
-            current_customer_segment = ""
-            if current_customer_segment_key == "medium":
-                current_customer_segment = "Medium"
-            elif current_customer_segment_key == "sme":
-                current_customer_segment = "SME"
-            if current_customer_segment != segment:
-                frappe.db.set_value("HD Customer", customer_name, "custom_customer_segment", segment, update_modified=False)
-        except Exception as exc:
-            frappe.log_error("Cannot update HD Customer segment for " + customer_name + "\n" + str(exc)[:500], SCRIPT_TITLE)
-
-    target_team = SME_TEAM
-    if segment == "Medium":
-        target_team = MEDIUM_TEAM
-
-    reason = "Customer Segment " + segment + " routes to " + target_team + ". Source: " + source + ". " + reason_detail
-    if not frappe.db.exists("HD Team", target_team):
-        doc.custom_haravan_routing_reason = "Target team " + target_team + " does not exist. " + reason
-    else:
-        current_agent_group = str(doc.get("agent_group") or "").strip()
-        if current_agent_group in AUTO_ROUTED_AGENT_GROUPS:
-            doc.agent_group = target_team
+    if frappe.db.exists("HD Team", target_team):
+        doc.agent_group = target_team
+        doc.custom_customer_segment = ticket_segment
+        doc.custom_shopplan = ticket_shopplan
+        doc.custom_haravan_service_plan = shopplan_name
+        doc.custom_haravan_profile_status = "Complete"
+        doc.custom_haravan_profile_error = ""
+        doc.custom_haravan_profile_checked_at = frappe.utils.now()
         doc.custom_haravan_routing_reason = reason
+    else:
+        doc.custom_haravan_routing_reason = "Routing skipped: target team " + target_team + " does not exist. " + reason
 '''
+
+
+ASSIGNMENT_SERVER_SCRIPT = r'''# Server Script - DocType Event: HD Ticket
+# Event: After Insert
+# Purpose: Assign auto-routed new tickets by round robin within HD Team.users.
+# Safe-exec style: top-level only; helper functions cannot reliably see each other in DocType Event scripts.
+
+SCRIPT_TITLE = "Profile - Ticket Round Robin Assignment"
+ROUTED_TEAMS = ["Medium - Scale", "Medium - Grow", "CS 60p"]
+
+agent_group = str(doc.get("agent_group") or "").strip()
+routing_reason = str(doc.get("custom_haravan_routing_reason") or "").strip()
+
+if agent_group in ROUTED_TEAMS and routing_reason.startswith("Auto-routed:"):
+    existing_assignments = frappe.get_all(
+        "ToDo",
+        filters={
+            "reference_type": "HD Ticket",
+            "reference_name": doc.name,
+            "status": "Open",
+        },
+        fields=["name"],
+        limit=1,
+    )
+
+    if not existing_assignments:
+        if not frappe.db.exists("HD Team", agent_group):
+            frappe.log_error("Target team does not exist: " + agent_group, SCRIPT_TITLE)
+        else:
+            team = frappe.get_doc("HD Team", agent_group)
+            active_users = []
+            for row in team.get("users") or []:
+                user_id = str(row.get("user") or "").strip()
+                if user_id and frappe.db.exists("User", user_id):
+                    enabled = frappe.db.get_value("User", user_id, "enabled")
+                    if enabled in (1, "1", True):
+                        active_users.append(user_id)
+
+            if not active_users:
+                frappe.log_error("No active users in HD Team: " + agent_group, SCRIPT_TITLE)
+            else:
+                assignment_description = "Auto round-robin assignment for " + agent_group
+                last_user = ""
+                previous_assignments = frappe.get_all(
+                    "ToDo",
+                    filters={
+                        "reference_type": "HD Ticket",
+                        "description": assignment_description,
+                    },
+                    fields=["allocated_to"],
+                    order_by="creation desc",
+                    limit=1,
+                )
+                if previous_assignments:
+                    last_user = str(previous_assignments[0].get("allocated_to") or "").strip()
+
+                selected_user = active_users[0]
+                if last_user:
+                    for idx in range(len(active_users)):
+                        if active_users[idx] == last_user:
+                            selected_user = active_users[(idx + 1) % len(active_users)]
+                            break
+
+                assignment_error = ""
+                try:
+                    frappe.desk.form.assign_to.add(
+                        {
+                            "assign_to": [selected_user],
+                            "doctype": "HD Ticket",
+                            "name": doc.name,
+                            "description": assignment_description,
+                            "notify": 0,
+                        }
+                    )
+                except Exception as exc:
+                    assignment_error = str(exc)[:500]
+
+                if assignment_error:
+                    try:
+                        todo = frappe.new_doc("ToDo")
+                        todo.allocated_to = selected_user
+                        todo.reference_type = "HD Ticket"
+                        todo.reference_name = doc.name
+                        todo.status = "Open"
+                        todo.description = assignment_description
+                        todo.flags.ignore_permissions = True
+                        todo.insert(ignore_permissions=True)
+                        assignment_error = ""
+                    except Exception as exc:
+                        assignment_error = assignment_error + "\nFallback ToDo insert failed: " + str(exc)[:500]
+
+                if assignment_error:
+                    frappe.log_error("Cannot assign ticket " + doc.name + " to " + selected_user + "\n" + assignment_error, SCRIPT_TITLE)
+'''
+
+
+SERVER_SCRIPT_SPECS = [
+    {
+        "name": SERVER_SCRIPT_NAME,
+        "event": DOCTYPE_EVENT,
+        "script": SERVER_SCRIPT,
+        "backup_prefix": "routing",
+        "compile_label": "profile-ticket-routing-server-script",
+    },
+    {
+        "name": ASSIGNMENT_SERVER_SCRIPT_NAME,
+        "event": ASSIGNMENT_DOCTYPE_EVENT,
+        "script": ASSIGNMENT_SERVER_SCRIPT,
+        "backup_prefix": "assignment",
+        "compile_label": "profile-ticket-assignment-server-script",
+    },
+]
 
 
 def env(name: str) -> str:
@@ -260,15 +234,27 @@ def upsert_doc(session: requests.Session, site: str, doctype: str, name: str, pa
     return request_json(session, "POST", resource_url(site, doctype), data=json.dumps(payload))["data"]
 
 
-def deploy_server_script(session: requests.Session, site: str) -> dict:
+def _deploy_server_script(session: requests.Session, site: str, spec: dict) -> dict:
     payload = {
         "script_type": "DocType Event",
         "reference_doctype": REFERENCE_DOCTYPE,
-        "doctype_event": DOCTYPE_EVENT,
+        "doctype_event": spec["event"],
         "disabled": 0,
-        "script": SERVER_SCRIPT,
+        "script": spec["script"],
     }
-    return upsert_doc(session, site, "Server Script", SERVER_SCRIPT_NAME, payload)
+    return upsert_doc(session, site, "Server Script", spec["name"], payload)
+
+
+def deploy_server_script(session: requests.Session, site: str) -> dict:
+    return _deploy_server_script(session, site, SERVER_SCRIPT_SPECS[0])
+
+
+def deploy_assignment_server_script(session: requests.Session, site: str) -> dict:
+    return _deploy_server_script(session, site, SERVER_SCRIPT_SPECS[1])
+
+
+def _write_backup(path: Path, doc: dict):
+    path.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def main() -> int:
@@ -276,7 +262,8 @@ def main() -> int:
     api_key = env("HARAVAN_HELP_API_KEY")
     api_secret = env("HARAVAN_HELP_API_SECRET")
 
-    compile(SERVER_SCRIPT, "<profile-ticket-routing-server-script>", "exec")
+    for spec in SERVER_SCRIPT_SPECS:
+        compile(spec["script"], f"<{spec['compile_label']}>", "exec")
 
     session = requests.Session()
     session.headers.update(
@@ -289,22 +276,36 @@ def main() -> int:
 
     backup_dir = Path("backups") / f"profile_ticket_routing_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
     backup_dir.mkdir(parents=True, exist_ok=True)
-    existing = get_doc(session, site, "Server Script", SERVER_SCRIPT_NAME)
-    if existing:
-        (backup_dir / "server_script_before.json").write_text(
-            json.dumps(existing, ensure_ascii=False, indent=2),
-            encoding="utf-8",
+    deployed = []
+    for spec in SERVER_SCRIPT_SPECS:
+        existing = get_doc(session, site, "Server Script", spec["name"])
+        action = "updated" if existing else "created"
+        if existing:
+            _write_backup(backup_dir / f"{spec['backup_prefix']}_server_script_before.json", existing)
+
+        updated = _deploy_server_script(session, site, spec)
+        _write_backup(backup_dir / f"{spec['backup_prefix']}_server_script_after.json", updated)
+        deployed.append(
+            {
+                "name": spec["name"],
+                "reference_doctype": REFERENCE_DOCTYPE,
+                "doctype_event": spec["event"],
+                "action": action,
+            }
         )
 
-    updated = deploy_server_script(session, site)
-    (backup_dir / "server_script_after.json").write_text(
-        json.dumps(updated, ensure_ascii=False, indent=2),
-        encoding="utf-8",
+    print(
+        json.dumps(
+            {
+                "status": "success",
+                "site": site,
+                "deployed": deployed,
+                "backup_dir": str(backup_dir),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
     )
-
-    print(f"Deployed Server Script: {SERVER_SCRIPT_NAME}")
-    print(f"DocType event: {REFERENCE_DOCTYPE} / {DOCTYPE_EVENT}")
-    print(f"Backup: {backup_dir}")
     return 0
 
 

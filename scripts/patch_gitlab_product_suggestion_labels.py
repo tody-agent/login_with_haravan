@@ -33,6 +33,12 @@ PRODUCT_SUGGESTION_LABEL_FIELD = "gitlab_labels"
 PRODUCT_SUGGESTION_ASSIGN_FIELD = "assign_to"
 PRODUCT_SUGGESTION_PROJECT_ID_FIELD = "default_gitlab_projectid"
 TICKET_INTERNAL_TYPE_FIELDS = ["custom_internal_type", "ticket_type"]
+PRIORITY_LABELS = {
+    "urgent": "P1_Urgent",
+    "high": "P2_High",
+    "medium": "P3_Medium",
+    "low": "P4_Low",
+}
 BASE_GITLAB_LABELS = "helpdesk,customer-report"
 '''
 
@@ -79,9 +85,15 @@ def internal_type_labels(ticket_name):
     return []
 
 
+def ticket_priority_label(ticket_name):
+    priority = as_text(frappe.db.get_value(TICKET_DTYPE, ticket_name, "priority")).lower()
+    return PRIORITY_LABELS.get(priority, "")
+
+
 def gitlab_default_labels(ticket_name):
     labels = []
-    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name):
+    priority_label = ticket_priority_label(ticket_name)
+    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):
         if label not in labels:
             labels.append(label)
     return ",".join(labels)
@@ -131,6 +143,17 @@ def patch_server_script(script: str) -> str:
             'PRODUCT_SUGGESTION_PROJECT_ID_FIELD = "default_gitlab_projectid"\n',
             'PRODUCT_SUGGESTION_PROJECT_ID_FIELD = "default_gitlab_projectid"\n'
             'TICKET_INTERNAL_TYPE_FIELDS = ["custom_internal_type", "ticket_type"]\n',
+        )
+    if "PRIORITY_LABELS" not in patched:
+        patched = patched.replace(
+            'TICKET_INTERNAL_TYPE_FIELDS = ["custom_internal_type", "ticket_type"]\n',
+            'TICKET_INTERNAL_TYPE_FIELDS = ["custom_internal_type", "ticket_type"]\n'
+            'PRIORITY_LABELS = {\n'
+            '    "urgent": "P1_Urgent",\n'
+            '    "high": "P2_High",\n'
+            '    "medium": "P3_Medium",\n'
+            '    "low": "P4_Low",\n'
+            '}\n',
         )
 
     if "def split_labels(value):" not in patched:
@@ -192,9 +215,15 @@ def patch_server_script(script: str) -> str:
             '    return []\n'
             '\n'
             '\n'
+            'def ticket_priority_label(ticket_name):\n'
+            '    priority = as_text(frappe.db.get_value(TICKET_DTYPE, ticket_name, "priority")).lower()\n'
+            '    return PRIORITY_LABELS.get(priority, "")\n'
+            '\n'
+            '\n'
             'def gitlab_default_labels(ticket_name):\n'
             '    labels = []\n'
-            '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name):\n'
+            '    priority_label = ticket_priority_label(ticket_name)\n'
+            '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
             '        if label not in labels:\n'
             '            labels.append(label)\n'
             '    return ",".join(labels)\n',
@@ -205,7 +234,51 @@ def patch_server_script(script: str) -> str:
             '    return ",".join(product_suggestion_labels(ticket_name))\n',
             'def gitlab_default_labels(ticket_name):\n'
             '    labels = []\n'
+            '    priority_label = ticket_priority_label(ticket_name)\n'
+            '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
+            '        if label not in labels:\n'
+            '            labels.append(label)\n'
+            '    return ",".join(labels)\n',
+        )
+    if "def ticket_priority_label(ticket_name):" not in patched:
+        patched = patched.replace(
+            'def gitlab_default_labels(ticket_name):\n'
+            '    labels = []\n'
             '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name):\n'
+            '        if label not in labels:\n'
+            '            labels.append(label)\n'
+            '    return ",".join(labels)\n',
+            'def ticket_priority_label(ticket_name):\n'
+            '    priority = as_text(frappe.db.get_value(TICKET_DTYPE, ticket_name, "priority")).lower()\n'
+            '    return PRIORITY_LABELS.get(priority, "")\n'
+            '\n'
+            '\n'
+            'def gitlab_default_labels(ticket_name):\n'
+            '    labels = []\n'
+            '    priority_label = ticket_priority_label(ticket_name)\n'
+            '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
+            '        if label not in labels:\n'
+            '            labels.append(label)\n'
+            '    return ",".join(labels)\n',
+        )
+    if "def ticket_priority_label(ticket_name):" not in patched:
+        patched = patched.replace(
+            'def gitlab_default_labels(ticket_name):\n'
+            '    labels = []\n'
+            '    priority_label = ticket_priority_label(ticket_name)\n'
+            '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
+            '        if label not in labels:\n'
+            '            labels.append(label)\n'
+            '    return ",".join(labels)\n',
+            'def ticket_priority_label(ticket_name):\n'
+            '    priority = as_text(frappe.db.get_value(TICKET_DTYPE, ticket_name, "priority")).lower()\n'
+            '    return PRIORITY_LABELS.get(priority, "")\n'
+            '\n'
+            '\n'
+            'def gitlab_default_labels(ticket_name):\n'
+            '    labels = []\n'
+            '    priority_label = ticket_priority_label(ticket_name)\n'
+            '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
             '        if label not in labels:\n'
             '            labels.append(label)\n'
             '    return ",".join(labels)\n',
@@ -280,12 +353,19 @@ def patch_server_script(script: str) -> str:
         "PRODUCT_SUGGESTION_ASSIGN_FIELD",
         "PRODUCT_SUGGESTION_PROJECT_ID_FIELD",
         "TICKET_INTERNAL_TYPE_FIELDS",
+        "PRIORITY_LABELS",
+        '"urgent": "P1_Urgent"',
+        '"high": "P2_High"',
+        '"medium": "P3_Medium"',
+        '"low": "P4_Low"',
         "def gitlab_default_labels(ticket_name):",
         "def internal_type_labels(ticket_name):",
+        "def ticket_priority_label(ticket_name):",
+        'frappe.db.get_value(TICKET_DTYPE, ticket_name, "priority")',
         'return ["Bug"]',
         'return ["Support"]',
         'return ["API_Support"]',
-        "product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name)",
+        "product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else [])",
         "def gitlab_default_assignee_ids(ticket_name):",
         "def gitlab_default_project_id(ticket_name):",
         '"default_labels": gitlab_default_labels(ticket_name)',
