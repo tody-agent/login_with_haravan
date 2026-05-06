@@ -619,6 +619,7 @@ class SiteConfigCredentialsTest(unittest.TestCase):
         self.assertEqual(result["data"]["fieldname"], "customer")
         self.assertEqual(template.rows[0][0], "fields")
         self.assertEqual(template.rows[0][1]["fieldname"], "customer")
+        self.assertEqual(template.rows[0][1]["idx"], 2)
         self.assertEqual(template.rows[0][1]["required"], 0)
         self.assertEqual(template.rows[0][1]["hide_from_customer"], 0)
         self.assertEqual(template.rows[0][1]["placeholder"], "Chọn HD Customer nhận ticket")

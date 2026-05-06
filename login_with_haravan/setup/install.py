@@ -43,6 +43,7 @@ HELPDESK_TICKET_CC_TEMPLATE_FIELD = {
 
 HELPDESK_TICKET_CUSTOMER_TEMPLATE_FIELD = {
     "fieldname": HELPDESK_TICKET_CUSTOMER_FIELDNAME,
+    "idx": 2,
     "required": 0,
     "hide_from_customer": 0,
     "placeholder": "Chọn HD Customer nhận ticket",
