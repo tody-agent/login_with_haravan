@@ -24,8 +24,13 @@ def get_ticket_customer_profile(ticket: str | int, refresh: bool = False) -> dic
         return refresh_customer_profile(hd_customer, contact, refresh=refresh, ticket=str(ticket))
 
     if hd_customer:
+        frappe.has_permission("HD Customer", "read", hd_customer, throw=True)
         customer_doc = frappe.get_doc("HD Customer", hd_customer)
-        contact_doc = frappe.get_doc("Contact", contact) if contact else None
+        if contact:
+            frappe.has_permission("Contact", "read", contact, throw=True)
+            contact_doc = frappe.get_doc("Contact", contact)
+        else:
+            contact_doc = None
         return _profile_response(
             customer_doc,
             contact_doc,
@@ -47,7 +52,11 @@ def get_ticket_bitrix_profile(ticket: str | int, refresh: bool = True) -> dict[s
     if hd_customer:
         return refresh_customer_profile(hd_customer, contact, refresh=refresh, ticket=str(ticket))
 
-    contact_doc = frappe.get_doc("Contact", contact) if contact else None
+    if contact:
+        frappe.has_permission("Contact", "read", contact, throw=True)
+        contact_doc = frappe.get_doc("Contact", contact)
+    else:
+        contact_doc = None
     config = get_bitrix_config()
     bitrix_data: dict[str, Any] = {
         "enabled": bool(config.get("enabled")),
@@ -256,7 +265,9 @@ def _ticket_only_response(
     contact_doc: Any | None = None,
     bitrix_data: dict[str, Any] | None = None,
 ):
-    contact_doc = contact_doc or (frappe.get_doc("Contact", context["contact"]) if context.get("contact") else None)
+    if not contact_doc and context.get("contact"):
+        frappe.has_permission("Contact", "read", context["contact"], throw=True)
+        contact_doc = frappe.get_doc("Contact", context["contact"])
     return {
         "success": True,
         "data": {
@@ -317,6 +328,7 @@ def _customer_summary(doc: Any) -> dict[str, Any]:
 def _contact_summary(contact: str) -> dict[str, Any] | None:
     if not contact:
         return None
+    frappe.has_permission("Contact", "read", contact, throw=True)
     return _contact_doc_summary(frappe.get_doc("Contact", contact))
 
 
