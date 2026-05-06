@@ -16,7 +16,10 @@ from login_with_haravan.engines.haravan_identity import (
     make_link_name,
     normalize_haravan_profile,
 )
-from login_with_haravan.engines.sync_helpdesk import enrich_helpdesk_data
+from login_with_haravan.engines.sync_helpdesk import (
+    enrich_helpdesk_data,
+    get_contact_phone_options,
+)
 
 PROVIDER = "haravan_account"
 REDIRECT_COOKIE = "haravan_login_redirect_to"
@@ -124,7 +127,7 @@ def login_via_haravan(code: str | None = None, state: str | None = None, **kwarg
 
     try:
         login_oauth_user(profile, provider=PROVIDER, state=state)
-        _persist_after_login(profile)
+        _persist_after_login(profile, user=profile.get("email"))
     except Exception as exc:
         _log_oauth_failure(
             "login_oauth_user",
@@ -139,8 +142,9 @@ def login_via_haravan(code: str | None = None, state: str | None = None, **kwarg
         raise
 
 
-def _persist_after_login(profile: dict):
-    user = getattr(frappe.session, "user", None)
+def _persist_after_login(profile: dict, user: str | None = None):
+    user = user or getattr(frappe.session, "user", None) or profile.get("email")
+    user = str(user or "").strip().lower()
     if not user or user == "Guest":
         return
 
@@ -185,6 +189,9 @@ def get_user_haravan_orgs():
         return []
 
     orgs_by_customer = {}
+    contact_links = _get_contact_hd_customer_links(user)
+    phone_options_by_customer = _phone_options_by_customer(contact_links)
+    fallback_phone_options = _fallback_user_phone_options(user)
 
     links = frappe.get_all(
         "Haravan Account Link",
@@ -194,25 +201,33 @@ def get_user_haravan_orgs():
     for link in links:
         if not link.hd_customer:
             continue
+        phone_options = (
+            phone_options_by_customer.get(link.hd_customer) or fallback_phone_options
+        )
         orgs_by_customer[link.hd_customer] = {
             "orgid": link.haravan_orgid,
             "orgname": link.haravan_orgname,
             "customer": link.hd_customer,
             "label": link.hd_customer,
             "value": link.hd_customer,
+            "phone": phone_options[0] if phone_options else "",
+            "phone_options": phone_options,
         }
 
-    for link in _get_contact_hd_customer_links(user):
+    for link in contact_links:
         customer = link.get("link_name")
         if not customer or customer in orgs_by_customer:
             continue
         label = link.get("link_title") or customer
+        phone_options = phone_options_by_customer.get(customer) or []
         orgs_by_customer[customer] = {
             "orgid": _extract_orgid(customer),
             "orgname": _extract_orgname(label),
             "customer": customer,
             "label": label,
             "value": customer,
+            "phone": phone_options[0] if phone_options else "",
+            "phone_options": phone_options,
         }
 
     return list(orgs_by_customer.values())
@@ -233,17 +248,7 @@ def get_user_haravan_org_options():
 
 
 def _get_contact_hd_customer_links(user: str) -> list[dict]:
-    emails = {str(user or "").strip(), str(user or "").strip().lower()}
-    emails = {email for email in emails if email}
-    if not emails:
-        return []
-
-    contact_rows = frappe.get_all(
-        "Contact Email",
-        filters={"email_id": ["in", list(emails)]},
-        fields=["parent"],
-    )
-    contact_names = sorted({row.parent for row in contact_rows if row.parent})
+    contact_names = _get_user_contact_names(user)
     if not contact_names:
         return []
 
@@ -254,9 +259,53 @@ def _get_contact_hd_customer_links(user: str) -> list[dict]:
             "parent": ["in", contact_names],
             "link_doctype": "HD Customer",
         },
-        fields=["link_name", "link_title"],
+        fields=["parent", "link_name", "link_title"],
         order_by="idx asc",
     )
+
+
+def _get_user_contact_names(user: str) -> list[str]:
+    emails = {str(user or "").strip(), str(user or "").strip().lower()}
+    emails = {email for email in emails if email}
+    if not emails:
+        return []
+
+    contact_rows = frappe.get_all(
+        "Contact Email",
+        filters={"email_id": ["in", list(emails)]},
+        fields=["parent"],
+    )
+    return sorted(
+        {
+            _get_row_value(row, "parent")
+            for row in contact_rows
+            if _get_row_value(row, "parent")
+        }
+    )
+
+
+def _phone_options_by_customer(contact_links: list[dict]) -> dict[str, list[str]]:
+    options_by_customer = {}
+    for link in contact_links:
+        customer = link.get("link_name")
+        contact = link.get("parent")
+        if not customer or not contact or customer in options_by_customer:
+            continue
+        options_by_customer[customer] = get_contact_phone_options(contact)
+    return options_by_customer
+
+
+def _fallback_user_phone_options(user: str) -> list[str]:
+    contact_names = _get_user_contact_names(user)
+    if len(contact_names) != 1:
+        return []
+    return get_contact_phone_options(contact_names[0])
+
+
+def _get_row_value(row, key: str):
+    if isinstance(row, dict):
+        return row.get(key)
+    return getattr(row, key, None)
 
 
 def _extract_orgid(customer: str) -> str:

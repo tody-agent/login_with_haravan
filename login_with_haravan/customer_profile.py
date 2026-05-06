@@ -3,6 +3,7 @@
 import frappe
 
 from login_with_haravan.engines.customer_enrichment import (
+    get_ticket_bitrix_profile as build_ticket_bitrix_profile,
     get_ticket_customer_profile as build_ticket_customer_profile,
     refresh_customer_profile as refresh_hd_customer_profile,
 )
@@ -11,6 +12,11 @@ from login_with_haravan.engines.customer_enrichment import (
 @frappe.whitelist()
 def get_ticket_customer_profile(ticket: str | int, refresh: int | str | bool = 0):
     return build_ticket_customer_profile(ticket, refresh=_as_bool(refresh))
+
+
+@frappe.whitelist()
+def get_ticket_bitrix_profile(ticket: str | int, refresh: int | str | bool = 1):
+    return build_ticket_bitrix_profile(ticket, refresh=_as_bool(refresh))
 
 
 @frappe.whitelist()

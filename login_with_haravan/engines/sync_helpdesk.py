@@ -14,12 +14,16 @@ Role-based Contact → HD Customer linking:
   - staff (or other) → Contact NOT linked → sees only OWN tickets
 """
 
+import json
+import re
+
 import frappe
 
 # Haravan roles that grant org-wide ticket visibility via Contact → HD Customer link.
 # owner/admin can see ALL tickets of their Haravan org in the Helpdesk portal.
 # Staff users only see tickets they created themselves.
 HD_CUSTOMER_LINK_ROLES = {"owner", "admin"}
+MIN_PHONE_DIGITS = 7
 
 def enrich_helpdesk_data(user: str, profile: dict):
     """Main entry point — called from oauth._persist_after_login().
@@ -245,25 +249,152 @@ def _update_contact(contact_name: str, normalized: dict, hd_customer_name: str |
 
 
 def auto_set_customer(doc, method=None):
-    """HD Ticket before_insert hook — auto-set customer from user's linked HD Customers.
+    """HD Ticket before_insert hook — auto-set and validate customer context.
 
     If user has exactly 1 linked HD Customer and the ticket has no customer set,
     automatically assign it.
     """
-    if doc.customer:
+    if not doc.customer:
+        user = frappe.session.user
+        if user and user != "Guest":
+            links = frappe.get_all(
+                "Haravan Account Link",
+                filters={"user": user},
+                fields=["hd_customer"],
+            )
+            customers = [l.hd_customer for l in links if l.hd_customer]
+            unique_customers = list(set(customers))
+
+            if len(unique_customers) == 1:
+                doc.customer = unique_customers[0]
+
+    validate_portal_ticket_customer_or_store_url(doc)
+
+
+def validate_portal_ticket_customer_or_store_url(doc, method=None):
+    """Require customer context for tickets created from the customer portal."""
+    if not getattr(doc, "via_customer_portal", None):
         return
 
-    user = frappe.session.user
-    if not user or user == "Guest":
+    submitted_doc = _submitted_ticket_doc()
+    customer = str(
+        _dict_value(submitted_doc, "customer", getattr(doc, "customer", None)) or ""
+    ).strip()
+    store_url = str(
+        _dict_value(submitted_doc, "custom_store_url", getattr(doc, "custom_store_url", None)) or ""
+    ).strip()
+    if customer or store_url:
         return
 
-    links = frappe.get_all(
-        "Haravan Account Link",
-        filters={"user": user},
-        fields=["hd_customer"],
+    frappe.throw(
+        "Vui lòng chọn Customer hoặc nhập Link Web / MyHaravan trước khi tạo ticket.",
+        title="Thiếu thông tin khách hàng",
     )
-    customers = [l.hd_customer for l in links if l.hd_customer]
-    unique_customers = list(set(customers))
 
-    if len(unique_customers) == 1:
-        doc.customer = unique_customers[0]
+
+def _submitted_ticket_doc() -> dict:
+    form_dict = getattr(frappe, "form_dict", None)
+    raw_doc = form_dict.get("doc") if form_dict else None
+    if isinstance(raw_doc, dict):
+        return raw_doc
+    if isinstance(raw_doc, str):
+        try:
+            parsed = json.loads(raw_doc)
+        except Exception:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _dict_value(data: dict, key: str, fallback=None):
+    if isinstance(data, dict) and key in data:
+        return data.get(key)
+    return fallback
+
+
+def get_contact_phone_options(contact: str | None) -> list[str]:
+    """Return Contact phone suggestions from the main Contact fields."""
+    if not contact:
+        return []
+
+    doc = frappe.get_doc("Contact", contact)
+    candidates = [
+        getattr(doc, "mobile_no", None),
+        getattr(doc, "phone", None),
+    ]
+    options = []
+    seen = set()
+    for phone in candidates:
+        key = normalize_phone_key(phone)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        options.append(str(phone).strip())
+    return options
+
+
+def persist_ticket_contact_phone(doc, method=None):
+    """Store a newly-entered ticket phone on the ticket Contact for future suggestions."""
+    phone = _doc_value(doc, "custom_phone")
+    key = normalize_phone_key(phone)
+    if not key:
+        return
+
+    contact_name = _doc_value(doc, "contact") or _contact_for_email(
+        _doc_value(doc, "raised_by")
+    )
+    if not contact_name:
+        return
+
+    try:
+        contact = frappe.get_doc("Contact", contact_name)
+        existing = _contact_phone_keys(contact)
+        if key in existing:
+            return
+
+        cleaned_phone = str(phone).strip()
+        if not getattr(contact, "mobile_no", None):
+            contact.mobile_no = cleaned_phone
+        if not getattr(contact, "phone", None):
+            contact.phone = cleaned_phone
+        contact.flags.ignore_permissions = True
+        contact.save(ignore_permissions=True)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Haravan ticket contact phone sync failed")
+
+
+def normalize_phone_key(phone) -> str:
+    """Normalize phone text for duplicate checks without changing stored formatting."""
+    digits = re.sub(r"\D+", "", str(phone or ""))
+    if digits.startswith("0084") and len(digits) > 6:
+        digits = "0" + digits[4:]
+    elif digits.startswith("84") and len(digits) >= 11:
+        digits = "0" + digits[2:]
+    return digits if len(digits) >= MIN_PHONE_DIGITS else ""
+
+
+def _contact_for_email(email: str | None) -> str | None:
+    email = str(email or "").strip()
+    if not email:
+        return None
+    return frappe.db.get_value("Contact", {"email_id": email}, "name")
+
+
+def _doc_value(doc, key: str):
+    getter = getattr(doc, "get", None)
+    if callable(getter):
+        value = getter(key)
+        if value is not None:
+            return value
+    return getattr(doc, key, None)
+
+
+def _contact_phone_keys(contact) -> set[str]:
+    return {
+        key
+        for key in [
+            normalize_phone_key(getattr(contact, "mobile_no", None)),
+            normalize_phone_key(getattr(contact, "phone", None)),
+        ]
+        if key
+    }

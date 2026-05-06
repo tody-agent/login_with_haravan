@@ -1,11 +1,14 @@
 {
-  "name": "login-with-haravan-docs",
+  "name": "haravan-helpdesk-docs",
   "version": "1.0.0",
-  "description": "Tài liệu cho Login With Haravan",
+  "description": "Tài liệu Haravan Helpdesk",
   "scripts": {
-    "docs:dev": "vitepress dev",
+    "dev": "vitepress dev --host 127.0.0.1",
+    "build": "vitepress build",
+    "preview": "vitepress preview --host 127.0.0.1",
+    "docs:dev": "vitepress dev --host 127.0.0.1",
     "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "docs:preview": "vitepress preview --host 127.0.0.1"
   },
   "devDependencies": {
     "vitepress": "^1.6.4"

@@ -1,3 +1,4 @@
+import base64
 import json
 import unittest
 
@@ -33,6 +34,19 @@ class HaravanIdentityTest(unittest.TestCase):
         self.assertEqual(profile["email"], "owner@example.com")
         self.assertEqual(profile["org_id"], "200000376735")
         self.assertEqual(profile["role"], ["admin"])
+
+    def test_normalizes_roles_case_and_multiple_string_values(self):
+        profile = normalize_haravan_profile(
+            {
+                "sub": "1000008681",
+                "email": "sociads@gmail.com",
+                "orgid": "1000008079",
+                "orgname": "Trang trí phòng xinh",
+                "role": "Admin Owner",
+            }
+        )
+
+        self.assertEqual(profile["role"], ["admin", "owner"])
 
     def test_requires_user_email_and_org(self):
         with self.assertRaises(HaravanIdentityError) as ctx:
@@ -75,6 +89,15 @@ class HaravanIdentityTest(unittest.TestCase):
         }
 
         self.assertEqual(decode_oauth_state(encode_oauth_state(state)), state)
+
+    def test_oauth_state_decode_returns_empty_dict_for_malformed_state(self):
+        self.assertEqual(decode_oauth_state("not-base64-!!!"), {})
+
+        malformed_json = base64.b64encode(b"{invalid-json}").decode("utf-8")
+        self.assertEqual(decode_oauth_state(malformed_json), {})
+
+        non_utf8 = base64.b64encode(b"\xff\xfe\xfd").decode("utf-8")
+        self.assertEqual(decode_oauth_state(non_utf8), {})
 
     def test_normalizes_helpdesk_redirects(self):
         self.assertEqual(

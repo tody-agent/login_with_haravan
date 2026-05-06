@@ -62,5 +62,24 @@ class TestFrontendSafety(unittest.TestCase):
         self.assertIn("showSelectedCustomer(wrapper, orgs[0])", content)
         self.assertIn("Ch\\u1ECDn HD Customer", content)
         self.assertIn("select.selectedIndex = 1", content)
-        self.assertIn("window.__haravan_selected_customer = orgs[0].customer", content)
-        self.assertIn("showSelectedCustomer(wrapper, this.options[this.selectedIndex]._haravanOrg)", content)
+        self.assertIn("setSelectedOrg(orgs[0])", content)
+        self.assertIn("showSelectedCustomer(wrapper, org)", content)
+
+    def test_haravan_org_selector_autofills_and_injects_contact_phone(self):
+        """The portal ticket form should reuse the selected Contact phone."""
+        content = self.read_js("haravan_org_selector.js")
+
+        self.assertIn("window.__haravan_selected_phone", content)
+        self.assertIn("setPhoneIfEmpty", content)
+        self.assertIn("docObj.custom_phone = phone", content)
+        self.assertIn("jsonBody.doc.custom_phone = phone", content)
+
+    def test_customer_profile_panel_uses_fast_profile_then_bitrix_tab(self):
+        """Customer Profile must open before slow Bitrix enrichment finishes."""
+        content = self.read_js("customer_profile_panel.js")
+
+        self.assertIn("get_ticket_customer_profile", content)
+        self.assertIn("get_ticket_bitrix_profile", content)
+        self.assertIn('state.activeTab = hasCustomer ? "profile" : "bitrix"', content)
+        self.assertIn("if (!hasCustomer) loadBitrix(panel, false)", content)
+        self.assertIn("Dang doi du lieu Bitrix", content)

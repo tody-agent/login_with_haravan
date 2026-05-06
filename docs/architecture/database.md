@@ -1,6 +1,6 @@
 ---
 title: Cơ sở dữ liệu
-description: Sơ đồ cơ sở dữ liệu — các DocType và Custom Fields của Login With Haravan
+description: Sơ đồ cơ sở dữ liệu — các DocType và Custom Fields của Haravan Helpdesk
 keywords: database, cơ sở dữ liệu, schema, doctype, frappe
 robots: index, follow
 ---
@@ -8,7 +8,7 @@ robots: index, follow
 # 🗄️ Cơ sở dữ liệu
 
 :::info Tóm tắt
-Dữ liệu của Login With Haravan chủ yếu mở rộng từ các DocType có sẵn của Frappe/Helpdesk, cộng thêm hai DocType tuỳ chỉnh: `Haravan Account Link` và `HD Customer Data`.
+Dữ liệu của Haravan Helpdesk chủ yếu mở rộng từ các DocType có sẵn của Frappe/Helpdesk, cộng thêm hai DocType tuỳ chỉnh: `Haravan Account Link` và `HD Customer Data`.
 :::
 
 ## 1. Haravan Account Link (DocType tuỳ chỉnh)

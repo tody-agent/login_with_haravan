@@ -462,7 +462,7 @@ Chỉ dùng Settings DocType như fallback migration tạm thời. Chuẩn vận
 
 ### Tài liệu liên quan
 
-- [Cấu hình Haravan](../../docs/guide/configuration.md)
+- [Cấu hình Haravan](../../docs/guide/getting-started.md)
 - [Site Config Secret Handoff](../SITE_CONFIG.md)
 - [Cơ sở dữ liệu](../../docs/architecture/database.md)
 - [Customer Profile API](../../docs/api/customer-profile.md)

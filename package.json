@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Frappe custom app for Haravan OAuth",
   "scripts": {
+    "docs:dev": "npm --prefix docs run dev",
+    "docs:build": "npm --prefix docs run build",
+    "docs:preview": "npm --prefix docs run preview",
     "test:gate": "./test_gate.sh",
     "test": "npm run test:gate",
     "patch:bitrix-settings": "python3 scripts/patch_helpdesk_integrations_bitrix_settings.py",

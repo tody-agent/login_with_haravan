@@ -46,6 +46,60 @@
 
 ## Mistakes & Learnings
 
+- [Decision]: Merge security-only fixes from open Sentinel branches by porting the
+  exact behavior into the active integration branch, then proving with local tests
+  instead of blindly merging duplicate branches. — scope: module:customer-profile-oauth-security
+
+- What Failed: `refresh_customer_profile` could load arbitrary `HD Customer` and
+  `Contact` documents from direct whitelisted arguments before checking document
+  permissions.
+- How to Prevent: For every direct whitelisted profile/detail API, call
+  `frappe.has_permission(..., throw=True)` on user-controlled DocType names before
+  `frappe.get_doc`, and add denial-path unit tests.
+- Scope: module:customer-profile-bitrix-sync
+
+- What Failed: Customer portal ticket `49679` opened with a blank middle
+  activity area showing only the `Activity` heading, even though
+  `HD Ticket.description` contained `<p>Góp ý </p>`.
+- Why It Failed: The Helpdesk customer ticket view renders only linked
+  `Communication` rows in `TicketConversation.vue`; `HD Ticket.description` is
+  not rendered directly. The ticket had no linked `Communication` because a
+  stale cached `Communication - Notify Ticket CC on Reply` Server Script still
+  used helper functions and raised `name 'as_text' is not defined` during
+  `Communication.after_insert`.
+- How to Prevent: For blank customer portal Activity screens, query
+  `Communication` by `reference_doctype="HD Ticket"` and `reference_name`
+  before changing frontend code. If Error Log points at a stale Server Script
+  body, save/nudge the Server Script to flush cache, then backfill only the
+  affected ticket's first `Communication` from `HD Ticket.description`.
+- Scope: site:haravandesk.s.frappe.cloud scripts
+
+- What Failed: Ticket `61117` had `custom_orgid=1000391653`, Bitrix/profile
+  routing completed, but `HD Ticket.customer` stayed empty and no `HD Customer`
+  or `HD Customer Data` existed for the org.
+- Why It Failed: The production ticket profile/routing path enriched ticket cache
+  fields but did not invoke the `haravan_bitrix_metajson_company_enrichment`
+  API that creates the `HD Customer`, stores the Bitrix snapshot, and links the
+  ticket.
+- How to Prevent: When a ticket has profile/routing data but no customer, call
+  `haravan_bitrix_metajson_company_enrichment` with `orgid`, `ticket`, and
+  `force=1`; for a durable fix, wire the ticket/profile workflow to call that
+  endpoint after resolving `custom_orgid`.
+- Scope: site:haravandesk.s.frappe.cloud scripts
+
+- What Failed: Customer Profile modal showed a matched Bitrix company, but
+  pressing "Đồng bộ" returned `Ticket has no Haravan Company ID` on ticket
+  `61111`.
+- Why It Failed: The profile API built a broad candidate/fallback set and
+  matched Bitrix company `200000239589`, while the sync API only read Haravan
+  ID fields directly from `HD Ticket`; `HD Ticket.custom_orgid` was blank, so
+  the sync action rejected a profile that had already matched.
+- How to Prevent: When a UI action follows a successful profile lookup, pass
+  the resolved `company.company_id` to the sync API and let the API prefer
+  request-level `company_id/orgid` before ticket fields. Keep profile and sync
+  lookup sources aligned with regression tests.
+- Scope: module:customer-profile-bitrix-sync
+
 - What Failed: `AI - Ticket Copilot Event` spammed Error Logs with
   `name 'as_text' is not defined` on every `HD Ticket.after_insert`.
 - Why It Failed: Production Server Script used helper functions where one helper
@@ -122,3 +176,16 @@
 - Why It Failed: `modules.txt` was changed from `Login With Haravan` to `Login With Haravan` in commit af7665c. Frappe's `sync_for()` scrubs module names via `frappe.scrub()`: `"Login With Haravan"` → `"frappe_x_haravan"`. But the actual Python directory is `login_with_haravan/login_with_haravan/` → scrubbed as `"login_with_haravan"`. The import `login_with_haravan.frappe_x_haravan` doesn't exist.
 - How to Prevent: **NEVER rename `modules.txt` unless you also rename the corresponding Python directory.** The value in `modules.txt` MUST scrub (via `frappe.scrub()`) to the actual directory name. Furthermore, the `"module"` field inside any custom DocType's JSON schema file must exactly match the original string (e.g., `"Login With Haravan"`) so that Frappe's `sync_all()` loads the correct scrubbed Python module. Use `hooks.py → app_title` for display branding instead.
 - Scope: global (Frappe app development)
+
+- What Failed: Haravan OAuth login for `sociads@gmail.com` succeeded on production
+  with `User.social_logins.provider=haravan_account`, but no `Haravan Account Link`,
+  `HD Customer`, or `Contact` existed for org `1000008079`.
+- Why It Failed: The post-login persistence path depended on `frappe.session.user`
+  after `login_oauth_user()`. In the callback context this can still be unavailable
+  or `Guest`, causing `_persist_after_login()` to return silently before syncing
+  Helpdesk identity records. Role matching was also too exact for mixed-case or
+  multi-value role strings.
+- How to Prevent: Pass the normalized profile email explicitly into post-login
+  persistence, fall back to that email if the callback session user is empty, and
+  normalize Haravan roles to lowercase tokens before checking owner/admin access.
+- Scope: module:login_with_haravan.oauth

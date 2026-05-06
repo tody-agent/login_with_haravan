@@ -65,7 +65,7 @@ KHÔNG deploy, chỉ dùng cho nội bộ và AI Agents.
   - `docs/NEXT_STEPS_FOR_AGENT.md` -> Chuyển thành `openspec/AGENT_NEXT_STEPS.md`
   - `docs/AGENT_HANDOFF.md` -> Chuyển thành `openspec/AGENT_HANDOFF.md`
   - `docs/SITE_CONFIG_HANDOFF.md` -> Chuyển thành `openspec/SITE_CONFIG.md`
-  - Cấu hình public còn lại nằm ở `docs/guide/configuration.md`
+  - Cấu hình public còn lại nằm ở `docs/guide/getting-started.md`
   - Troubleshooting public còn lại nằm ở `docs/guide/troubleshooting.md`
   - Các thư mục `docs/jtbd/`, `docs/personas/`, `docs/sop/` hiện đang nằm trong `docs/` nên chuyển qua đây.
 - `AGENTS.md`: Giữ ở root như là file Manifest định tuyến cho Agent.

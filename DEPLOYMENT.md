@@ -21,7 +21,7 @@ For this login-only integration, do not add `grant_service`, `offline_access`, c
 See also:
 
 ```text
-docs/guide/configuration.md
+docs/guide/getting-started.md
 docs/guide/troubleshooting.md
 ```
 

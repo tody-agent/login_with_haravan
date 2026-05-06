@@ -3,6 +3,7 @@
 import sys
 import types
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, call
 
 # --- Frappe mock setup (shared with other test modules) ---
@@ -28,6 +29,7 @@ def _reset_frappe_mock():
     frappe_mock.get_doc.return_value = MagicMock()
     frappe_mock.get_all.side_effect = None
     frappe_mock.get_all.return_value = []
+    frappe_mock.form_dict = {}
 
 from login_with_haravan.engines.sync_helpdesk import (
     HD_CUSTOMER_LINK_ROLES,
@@ -35,9 +37,13 @@ from login_with_haravan.engines.sync_helpdesk import (
     _safe_int,
     auto_set_customer,
     enrich_helpdesk_data,
+    get_contact_phone_options,
+    normalize_phone_key,
+    persist_ticket_contact_phone,
     update_user_profile,
     upsert_hd_customer,
     upsert_contact,
+    validate_portal_ticket_customer_or_store_url,
 )
 
 
@@ -481,6 +487,138 @@ class TestAutoSetCustomer(unittest.TestCase):
 
         self.assertIsNone(doc.customer)
         frappe_mock.get_all.assert_not_called()
+
+    def test_portal_ticket_requires_customer_or_store_url(self):
+        """Should block portal tickets without customer context."""
+        frappe_mock.throw.side_effect = Exception("missing customer context")
+        doc = SimpleNamespace(
+            via_customer_portal=1,
+            customer="",
+            custom_store_url="",
+        )
+
+        with self.assertRaises(Exception) as context:
+            validate_portal_ticket_customer_or_store_url(doc)
+
+        self.assertIn("missing customer context", str(context.exception))
+        frappe_mock.throw.assert_called_once_with(
+            "Vui lòng chọn Customer hoặc nhập Link Web / MyHaravan trước khi tạo ticket.",
+            title="Thiếu thông tin khách hàng",
+        )
+
+    def test_portal_ticket_uses_submitted_values_before_backend_autofill(self):
+        """Should block when the submitted portal form omitted both context fields."""
+        frappe_mock.throw.side_effect = Exception("missing submitted customer context")
+        frappe_mock.form_dict = {
+            "doc": {
+                "customer": "",
+                "custom_store_url": "",
+            }
+        }
+        doc = SimpleNamespace(
+            via_customer_portal=1,
+            customer="Backend Auto-filled Customer",
+            custom_store_url="",
+        )
+
+        with self.assertRaises(Exception) as context:
+            validate_portal_ticket_customer_or_store_url(doc)
+
+        self.assertIn("missing submitted customer context", str(context.exception))
+
+    def test_portal_ticket_allows_customer_without_store_url(self):
+        """Should allow portal tickets when a customer is selected."""
+        doc = SimpleNamespace(
+            via_customer_portal=1,
+            customer="Trang trí phòng xinh - 1000008079",
+            custom_store_url="",
+        )
+
+        validate_portal_ticket_customer_or_store_url(doc)
+
+        frappe_mock.throw.assert_not_called()
+
+    def test_portal_ticket_allows_store_url_without_customer(self):
+        """Should allow portal tickets when a store URL is provided."""
+        doc = SimpleNamespace(
+            via_customer_portal=1,
+            customer="",
+            custom_store_url="shop.myharavan.com",
+        )
+
+        validate_portal_ticket_customer_or_store_url(doc)
+
+        frappe_mock.throw.assert_not_called()
+
+
+class TestContactPhoneSuggestions(unittest.TestCase):
+    def setUp(self):
+        _reset_frappe_mock()
+
+    def test_mobile_no_is_first(self):
+        frappe_mock.get_doc.return_value = MagicMock(
+            mobile_no="0938411165",
+            phone="028123456",
+        )
+
+        self.assertEqual(get_contact_phone_options("contact-1"), ["0938411165", "028123456"])
+
+    def test_falls_back_to_phone_when_mobile_no_is_empty(self):
+        frappe_mock.get_doc.return_value = MagicMock(
+            mobile_no="",
+            phone="0900000001",
+        )
+
+        self.assertEqual(get_contact_phone_options("contact-1"), ["0900000001"])
+
+    def test_normalize_phone_key_matches_vietnam_country_code(self):
+        self.assertEqual(normalize_phone_key("+84 938 411 165"), "0938411165")
+
+
+class TestPersistTicketContactPhone(unittest.TestCase):
+    def setUp(self):
+        _reset_frappe_mock()
+
+    def test_sets_new_ticket_phone_on_contact_main_fields(self):
+        contact = MagicMock()
+        contact.mobile_no = ""
+        contact.phone = ""
+        frappe_mock.get_doc.return_value = contact
+        doc = SimpleNamespace(custom_phone="0938411165", contact="contact-1", raised_by="")
+
+        persist_ticket_contact_phone(doc)
+
+        self.assertEqual(contact.mobile_no, "0938411165")
+        self.assertEqual(contact.phone, "0938411165")
+        contact.append.assert_not_called()
+        contact.save.assert_called_once_with(ignore_permissions=True)
+
+    def test_does_not_duplicate_existing_phone_with_different_format(self):
+        contact = MagicMock()
+        contact.mobile_no = "+84 938 411 165"
+        contact.phone = ""
+        frappe_mock.get_doc.return_value = contact
+        doc = SimpleNamespace(custom_phone="0938411165", contact="contact-1", raised_by="")
+
+        persist_ticket_contact_phone(doc)
+
+        contact.save.assert_not_called()
+
+    def test_falls_back_to_raised_by_contact(self):
+        frappe_mock.db.get_value.return_value = "contact-from-email"
+        contact = MagicMock()
+        contact.mobile_no = ""
+        contact.phone = "028123456"
+        frappe_mock.get_doc.return_value = contact
+        doc = SimpleNamespace(custom_phone="0938411165", contact="", raised_by="owner@example.com")
+
+        persist_ticket_contact_phone(doc)
+
+        frappe_mock.db.get_value.assert_called_with("Contact", {"email_id": "owner@example.com"}, "name")
+        self.assertEqual(contact.mobile_no, "0938411165")
+        self.assertEqual(contact.phone, "028123456")
+        contact.save.assert_called_once_with(ignore_permissions=True)
+
 
 class TestLegacyHaravanCommerceDataIgnored(unittest.TestCase):
     """Haravan login no longer writes commerce metadata during login."""

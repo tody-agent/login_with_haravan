@@ -13,35 +13,109 @@ from login_with_haravan.engines.site_config import get_bitrix_config
 
 
 def get_ticket_customer_profile(ticket: str | int, refresh: bool = False) -> dict[str, Any]:
-    frappe.has_permission("HD Ticket", "read", str(ticket), throw=True)
-    ticket_row = frappe.db.get_value(
-        "HD Ticket",
-        ticket,
-        ["customer", "contact", "raised_by"],
-        as_dict=True,
-    )
-    if not ticket_row:
+    context = _ticket_context(ticket)
+    if not context:
         return {"success": False, "data": {}, "message": "Ticket not found."}
 
-    hd_customer = _get_value(ticket_row, "customer")
-    contact = _get_value(ticket_row, "contact")
-    raised_by = _get_value(ticket_row, "raised_by")
-    if not contact and raised_by:
-        contact = frappe.db.get_value("Contact", {"email_id": raised_by}, "name")
+    hd_customer = context.get("customer")
+    contact = context.get("contact")
 
-    if not hd_customer:
-        return {
-            "success": True,
-            "data": {
-                "ticket": {"name": str(ticket), "raised_by": raised_by},
-                "customer": None,
-                "contact": _contact_summary(contact) if contact else None,
-                "bitrix": {"enabled": False, "configured": False},
-            },
-            "message": "Ticket has no linked HD Customer.",
+    if hd_customer and refresh:
+        return refresh_customer_profile(hd_customer, contact, refresh=refresh, ticket=str(ticket))
+
+    if hd_customer:
+        customer_doc = frappe.get_doc("HD Customer", hd_customer)
+        contact_doc = frappe.get_doc("Contact", contact) if contact else None
+        return _profile_response(
+            customer_doc,
+            contact_doc,
+            _stored_bitrix_summary(customer_doc, contact_doc),
+            "Customer profile loaded.",
+            ticket=context,
+        )
+
+    return _ticket_only_response(context, "Ticket has no linked HD Customer.")
+
+
+def get_ticket_bitrix_profile(ticket: str | int, refresh: bool = True) -> dict[str, Any]:
+    context = _ticket_context(ticket)
+    if not context:
+        return {"success": False, "data": {}, "message": "Ticket not found."}
+
+    hd_customer = context.get("customer")
+    contact = context.get("contact")
+    if hd_customer:
+        return refresh_customer_profile(hd_customer, contact, refresh=refresh, ticket=str(ticket))
+
+    contact_doc = frappe.get_doc("Contact", contact) if contact else None
+    config = get_bitrix_config()
+    bitrix_data: dict[str, Any] = {
+        "enabled": bool(config.get("enabled")),
+        "configured": bool(config.get("configured")),
+        "company": None,
+        "contact": None,
+        "responsible": None,
+        "status": "disabled",
+    }
+
+    if not config.get("enabled"):
+        return _ticket_only_response(context, "Bitrix enrichment is disabled.", contact_doc, bitrix_data)
+    if not config.get("configured"):
+        bitrix_data["status"] = "missing_config"
+        return _ticket_only_response(context, "Bitrix is not configured.", contact_doc, bitrix_data)
+
+    orgid = _first_present(context.get("orgid"), context.get("profile_orgid"))
+    email = _empty_to_none(getattr(contact_doc, "email_id", None)) if contact_doc else _empty_to_none(context.get("raised_by"))
+    phone = (
+        _empty_to_none(getattr(contact_doc, "mobile_no", None) or getattr(contact_doc, "phone", None))
+        if contact_doc
+        else None
+    )
+    if not orgid and not email and not phone:
+        bitrix_data["status"] = "missing_lookup"
+        return _ticket_only_response(context, "Ticket has no Haravan Org ID, email, or phone for Bitrix lookup.", contact_doc, bitrix_data)
+
+    client = BitrixClient(config)
+    try:
+        company = _first(client.find_companies(haravan_orgid=_empty_to_none(orgid)))
+        bitrix_contact = _first(client.find_contacts(email=email, phone=phone))
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Bitrix customer profile fetch failed")
+        bitrix_data["status"] = "error"
+        return _ticket_only_response(context, "Bitrix fetch failed.", contact_doc, bitrix_data)
+
+    if company:
+        company_id = _entity_id(company)
+        company_url = client.build_entity_url("company", company_id)
+        bitrix_data["company"] = {
+            "id": str(company_id) if company_id is not None else None,
+            "title": company.get("TITLE") or company.get("NAME"),
+            "url": company_url,
+            "summary": company,
+        }
+        responsible = _resolve_responsible_user(client, company)
+        if responsible:
+            bitrix_data["responsible"] = responsible
+            if responsible.get("active") and responsible.get("email"):
+                _update_ticket_responsible(str(ticket), responsible["email"])
+
+    if bitrix_contact:
+        contact_id = _entity_id(bitrix_contact)
+        contact_url = client.build_entity_url("contact", contact_id)
+        if contact_doc:
+            _set_if_possible(contact_doc, "custom_bitrix_contact_id", contact_id)
+            _set_if_possible(contact_doc, "custom_bitrix_contact_url", contact_url)
+            _set_if_possible(contact_doc, "custom_bitrix_last_synced_at", now_datetime())
+            _save_doc(contact_doc)
+        bitrix_data["contact"] = {
+            "id": str(contact_id) if contact_id is not None else None,
+            "title": _contact_title(bitrix_contact),
+            "url": contact_url,
+            "summary": bitrix_contact,
         }
 
-    return refresh_customer_profile(hd_customer, contact, refresh=refresh, ticket=str(ticket))
+    bitrix_data["status"] = "matched" if company or bitrix_contact else "not_found"
+    return _ticket_only_response(context, "Bitrix profile loaded.", contact_doc, bitrix_data)
 
 
 def refresh_customer_profile(
@@ -50,8 +124,13 @@ def refresh_customer_profile(
     refresh: bool = True,
     ticket: str | int | None = None,
 ) -> dict[str, Any]:
+    frappe.has_permission("HD Customer", "read", hd_customer, throw=True)
     customer_doc = frappe.get_doc("HD Customer", hd_customer)
-    contact_doc = frappe.get_doc("Contact", contact) if contact else None
+    if contact:
+        frappe.has_permission("Contact", "read", contact, throw=True)
+        contact_doc = frappe.get_doc("Contact", contact)
+    else:
+        contact_doc = None
     config = get_bitrix_config()
     bitrix_data: dict[str, Any] = {
         "enabled": bool(config.get("enabled")),
@@ -151,16 +230,73 @@ def refresh_customer_profile(
     return _profile_response(customer_doc, contact_doc, bitrix_data, "Customer profile loaded.")
 
 
-def _profile_response(customer_doc: Any, contact_doc: Any | None, bitrix_data: dict[str, Any], message: str):
+def _profile_response(
+    customer_doc: Any,
+    contact_doc: Any | None,
+    bitrix_data: dict[str, Any],
+    message: str,
+    ticket: dict[str, Any] | None = None,
+):
     return {
         "success": True,
         "data": {
+            "ticket": ticket or {},
             "customer": _customer_summary(customer_doc),
             "contact": _contact_doc_summary(contact_doc),
             "haravan": _haravan_links(getattr(customer_doc, "name", None)),
             "bitrix": bitrix_data,
         },
         "message": message,
+    }
+
+
+def _ticket_only_response(
+    context: dict[str, Any],
+    message: str,
+    contact_doc: Any | None = None,
+    bitrix_data: dict[str, Any] | None = None,
+):
+    contact_doc = contact_doc or (frappe.get_doc("Contact", context["contact"]) if context.get("contact") else None)
+    return {
+        "success": True,
+        "data": {
+            "ticket": context,
+            "customer": None,
+            "contact": _contact_doc_summary(contact_doc),
+            "haravan": [],
+            "bitrix": bitrix_data or {"enabled": False, "configured": False, "status": "idle"},
+        },
+        "message": message,
+    }
+
+
+def _stored_bitrix_summary(customer_doc: Any, contact_doc: Any | None) -> dict[str, Any]:
+    company_id = getattr(customer_doc, "custom_bitrix_company_id", None)
+    contact_id = getattr(contact_doc, "custom_bitrix_contact_id", None) if contact_doc else None
+    return {
+        "enabled": None,
+        "configured": None,
+        "company": (
+            {
+                "id": str(company_id),
+                "title": getattr(customer_doc, "customer_name", None),
+                "url": getattr(customer_doc, "custom_bitrix_company_url", None),
+            }
+            if company_id
+            else None
+        ),
+        "contact": (
+            {
+                "id": str(contact_id),
+                "title": getattr(contact_doc, "name", None),
+                "url": getattr(contact_doc, "custom_bitrix_contact_url", None),
+            }
+            if contact_id and contact_doc
+            else None
+        ),
+        "responsible": None,
+        "status": getattr(customer_doc, "custom_bitrix_sync_status", None) or "local",
+        "cached": True,
     }
 
 
@@ -356,3 +492,45 @@ def _get_value(row: Any, key: str) -> Any:
     if isinstance(row, dict):
         return row.get(key)
     return getattr(row, key, None)
+
+
+def _ticket_context(ticket: str | int) -> dict[str, Any] | None:
+    frappe.has_permission("HD Ticket", "read", str(ticket), throw=True)
+    ticket_row = frappe.db.get_value(
+        "HD Ticket",
+        ticket,
+        ["customer", "contact", "raised_by"],
+        as_dict=True,
+    )
+    if not ticket_row:
+        return None
+
+    contact = _get_value(ticket_row, "contact")
+    raised_by = _get_value(ticket_row, "raised_by")
+    if not contact and raised_by:
+        contact = frappe.db.get_value("Contact", {"email_id": raised_by}, "name")
+
+    return {
+        "name": str(ticket),
+        "customer": _get_value(ticket_row, "customer"),
+        "contact": contact,
+        "raised_by": raised_by,
+        "orgid": _safe_ticket_value(ticket, "custom_orgid"),
+        "profile_orgid": _safe_ticket_value(ticket, "custom_haravan_profile_orgid"),
+    }
+
+
+def _safe_ticket_value(ticket: str | int, fieldname: str) -> Any:
+    try:
+        value = frappe.db.get_value("HD Ticket", ticket, fieldname)
+        return _get_value(value, fieldname) if isinstance(value, dict) else value
+    except Exception:
+        return None
+
+
+def _first_present(*values: Any) -> str | None:
+    for value in values:
+        cleaned = _empty_to_none(value)
+        if cleaned:
+            return cleaned
+    return None

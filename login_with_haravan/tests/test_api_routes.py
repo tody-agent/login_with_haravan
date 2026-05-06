@@ -56,3 +56,58 @@ class TestApiRoutes(unittest.TestCase):
 
         self.assertIn("openid profile email org userinfo", source)
         self.assertNotIn("com.read_shop", source)
+
+    def test_portal_customer_options_use_contact_links(self):
+        """Customer portal options should include HD Customers linked to the user's Contact."""
+        oauth_path = os.path.join(os.path.dirname(__file__), "../oauth.py")
+        with open(oauth_path, "r", encoding="utf-8") as f:
+            source = f.read()
+
+        self.assertIn("get_user_haravan_org_options", source)
+        self.assertIn("Contact Email", source)
+        self.assertIn("Dynamic Link", source)
+        self.assertIn('"link_doctype": "HD Customer"', source)
+        self.assertIn("return list(orgs_by_customer.values())", source)
+        self.assertIn("get_contact_phone_options", source)
+        self.assertIn('"phone": phone_options[0] if phone_options else ""', source)
+        self.assertIn('"phone_options": phone_options', source)
+
+        install_path = os.path.join(os.path.dirname(__file__), "../setup/install.py")
+        with open(install_path, "r", encoding="utf-8") as f:
+            install_source = f.read()
+
+        self.assertIn(
+            '"url_method": "login_with_haravan.oauth.get_user_haravan_org_options"',
+            install_source,
+        )
+
+    def test_oauth_persistence_uses_profile_email_not_session_only(self):
+        """Post-login sync must not silently skip while the callback session is Guest."""
+        oauth_path = os.path.join(os.path.dirname(__file__), "../oauth.py")
+        with open(oauth_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        login_callback = next(
+            node for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "login_via_haravan"
+        )
+        persist_calls = [
+            node for node in ast.walk(login_callback)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "_persist_after_login"
+        ]
+
+        self.assertEqual(len(persist_calls), 1)
+        self.assertTrue(
+            any(
+                keyword.arg == "user"
+                and isinstance(keyword.value, ast.Call)
+                and isinstance(keyword.value.func, ast.Attribute)
+                and keyword.value.func.attr == "get"
+                and isinstance(keyword.value.func.value, ast.Name)
+                and keyword.value.func.value.id == "profile"
+                for keyword in persist_calls[0].keywords
+            ),
+            "_persist_after_login must receive user=profile.get(...)",
+        )

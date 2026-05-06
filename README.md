@@ -55,16 +55,16 @@ bench --site boxme.localhost execute login_with_haravan.setup.install.configure_
 bench --site boxme.localhost clear-cache
 ```
 
-Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md).
+Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md). The VitePress handoff site starts at [docs/index.md](docs/index.md).
 
 ## Verify
 
 1. Go to `https://haravan.help/login`.
 2. Click `Login With Haravan`.
 
-## Agent Documentation
+## Handoff Documentation
 
-This package includes OpenSpec and handoff docs so another AI agent can continue implementation safely:
+This package includes VitePress, OpenSpec, and agent handoff docs so Haravan Developers or another AI agent can continue implementation safely:
 
 ```text
 AGENTS.md
@@ -76,12 +76,19 @@ openspec/SITE_CONFIG.md
 openspec/changes/haravan-social-login/design.md
 openspec/changes/haravan-social-login/tasks.md
 openspec/changes/haravan-social-login/specs/social-login/spec.md
-docs/architecture/oauth-flow.md
-docs/guide/configuration.md
+docs/index.md
+docs/about/handoff-roadmap.md
+docs/guide/getting-started.md
+docs/guide/deployment.md
 docs/guide/troubleshooting.md
+docs/architecture/oauth-flow.md
+docs/guide/haravan-user-account-cases.md
+docs/guide/haravan-employee-helpdesk-access.md
+docs/haravan-helpdesk-data-model.md
+docs/operations/metajson-bitrix-customer-profit-flow.md
 ```
 
-Start with `AGENTS.md`, then `openspec/project.md`, then `.cm/CONTINUITY.md`, then `openspec/AGENT_NEXT_STEPS.md`.
+For human handoff, start with `docs/index.md`. For agent continuation, start with `AGENTS.md`, then `openspec/project.md`, then `.cm/CONTINUITY.md`, then `openspec/AGENT_NEXT_STEPS.md`.
 
 ## Run Tests
 

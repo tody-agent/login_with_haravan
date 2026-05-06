@@ -20,13 +20,17 @@ def _first_string(payload: dict[str, Any], *keys: str) -> str | None:
 
 
 def _normalize_roles(value: Any) -> list[str]:
+    def normalize_role(role: Any) -> str:
+        return str(role).strip().lower()
+
     if value is None:
         return []
     if isinstance(value, str):
-        return [value] if value else []
+        roles = re.split(r"[,;/|\s]+", value.strip())
+        return [normalize_role(item) for item in roles if normalize_role(item)]
     if isinstance(value, (list, tuple, set)):
-        return [str(item).strip() for item in value if str(item).strip()]
-    return [str(value).strip()]
+        return [normalize_role(item) for item in value if normalize_role(item)]
+    return [normalize_role(value)] if normalize_role(value) else []
 
 
 def normalize_haravan_profile(payload: dict[str, Any]) -> dict[str, Any]:

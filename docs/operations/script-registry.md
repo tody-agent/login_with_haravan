@@ -79,6 +79,7 @@ Tất cả HD Form Script hiện đang **enabled**. Đây là các script UI tro
 | `Auth - Login Customer Enrich` | DocType Event | `Haravan Account Link / After Save` | ✅ | Làm giàu `HD Customer` chủ động sau login/register |
 | `Auth - Inside Customer Enrich` | DocType Event | `HD Ticket / Before Save` | ✅ | Làm giàu ticket/customer từ Inside/nguồn nội bộ |
 | `Profile - Bitrix Customer API` | API | `haravan_bitrix_customer_profile` | ✅ | Lấy Customer Profile từ Bitrix theo nhu cầu agent, đọc webhook từ `Helpdesk Integrations Settings` và normalize HSI/Shopplan |
+| `Metajson - Bitrix Company Enrichment API` | API | `haravan_bitrix_metajson_company_enrichment` | ✅ | Làm giàu `HD Customer` và link `HD Ticket` từ metajson/orgid bằng Bitrix company data |
 | `Profile - Ticket Routing` | DocType Event | `HD Ticket / Before Save` | ✅ | Routing ticket theo profile/segment khách hàng |
 | `Onboarding - Agent Ticket API` | API | `haravan_agent_create_customer_ticket` | ✅ | Backend cho dialog agent tạo ticket cho khách |
 | `Onboarding - Create Ticket API` | API | `haravan_helpdesk.api.create_onboarding_ticket` | ✅ | Tạo onboarding ticket từ API |

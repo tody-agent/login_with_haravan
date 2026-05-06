@@ -20,8 +20,14 @@ class TestGitLabProductLabelsPatch(unittest.TestCase):
         patched = patch_form_script(source)
 
         self.assertIn("const defLabels = init.default_labels || '';", patched)
+        self.assertIn("const defAssigneeIds = init.default_assignee_ids || '';", patched)
+        self.assertIn("const defProjectId = init.default_project_id || '';", patched)
         self.assertIn("labels: document.getElementById(`${id}-labels`)?.value || defLabels", patched)
+        self.assertIn("assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds", patched)
+        self.assertIn("project_id: document.getElementById(`${id}-project-id`)?.value || defProjectId", patched)
         self.assertIn('value="${esc(defLabels)}"', patched)
+        self.assertIn('value="${esc(defAssigneeIds)}"', patched)
+        self.assertIn('value="${esc(defProjectId)}"', patched)
         self.assertNotIn('value="helpdesk,customer-report"', patched)
 
     def test_server_script_reads_product_suggestion_gitlab_labels(self):
@@ -48,6 +54,7 @@ if action == "init":
 
 elif action == "create":
     labels = as_text(frappe.form_dict.get("labels") or "helpdesk,customer-report")
+    issue = api_post("/projects/" + project_id + "/issues", {"title": title, "description": full_description, "labels": labels})
 '''
 
         patched = patch_server_script(source)
@@ -55,10 +62,23 @@ elif action == "create":
         self.assertIn('PRODUCT_SUGGESTION_DOCTYPE = "HD Ticket Product Suggestion"', patched)
         self.assertIn('PRODUCT_SUGGESTION_FIELD = "custom_product_suggestion"', patched)
         self.assertIn('PRODUCT_SUGGESTION_LABEL_FIELD = "gitlab_labels"', patched)
+        self.assertIn('PRODUCT_SUGGESTION_ASSIGN_FIELD = "assign_to"', patched)
+        self.assertIn('PRODUCT_SUGGESTION_PROJECT_ID_FIELD = "default_gitlab_projectid"', patched)
+        self.assertIn('TICKET_INTERNAL_TYPE_FIELDS = ["custom_internal_type", "ticket_type"]', patched)
         self.assertIn('frappe.db.get_value(TICKET_DTYPE, ticket_name, PRODUCT_SUGGESTION_FIELD)', patched)
         self.assertIn('frappe.db.get_value(PRODUCT_SUGGESTION_DOCTYPE, suggestion, PRODUCT_SUGGESTION_LABEL_FIELD)', patched)
+        self.assertIn('def internal_type_labels(ticket_name):', patched)
+        self.assertIn('return ["Bug"]', patched)
+        self.assertIn('return ["Support"]', patched)
+        self.assertIn('return ["API_Support"]', patched)
+        self.assertIn('product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name)', patched)
         self.assertIn('"default_labels": gitlab_default_labels(ticket_name)', patched)
+        self.assertIn('"default_assignee_ids": gitlab_default_assignee_ids(ticket_name)', patched)
+        self.assertIn('"default_project_id": gitlab_default_project_id(ticket_name)', patched)
         self.assertIn('labels = as_text(frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name))', patched)
+        self.assertIn('create_project_id = as_text(frappe.form_dict.get("project_id") or gitlab_default_project_id(ticket_name) or project_id)', patched)
+        self.assertIn('create_payload["assignee_ids"] = [int(value) for value in assignee_ids]', patched)
+        self.assertIn('api_post("/projects/" + create_project_id + "/issues", create_payload)', patched)
         self.assertNotIn("split_labels(BASE_GITLAB_LABELS)", patched)
 
 

@@ -55,6 +55,56 @@
     });
   }
 
+  function firstPhone(org) {
+    if (!org) return "";
+    if (org.phone) return String(org.phone).trim();
+    if (Array.isArray(org.phone_options) && org.phone_options.length) {
+      return String(org.phone_options[0] || "").trim();
+    }
+    return "";
+  }
+
+  function findPhoneInput() {
+    var selectors = [
+      "input[name='custom_phone']",
+      "input[data-fieldname='custom_phone']",
+      "[data-fieldname='custom_phone'] input",
+      "input[placeholder*='Số điện thoại']",
+      "input[placeholder*='So dien thoai']",
+      "input[placeholder*='phone']",
+      "input[placeholder*='Phone']",
+    ];
+    for (var i = 0; i !== selectors.length; i++) {
+      var input = document.querySelector(selectors[i]);
+      if (input) return input;
+    }
+    return null;
+  }
+
+  function setPhoneIfEmpty(phone) {
+    if (!phone) return;
+    var input = findPhoneInput();
+    if (!input || input.value) return;
+    input.value = phone;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function selectedPhone() {
+    var input = findPhoneInput();
+    var typed = input && input.value ? String(input.value).trim() : "";
+    return typed || window.__haravan_selected_phone || "";
+  }
+
+  function setSelectedOrg(org) {
+    window.__haravan_selected_customer = org && org.customer;
+    window.__haravan_selected_phone = firstPhone(org);
+    setPhoneIfEmpty(window.__haravan_selected_phone);
+    setTimeout(function () {
+      setPhoneIfEmpty(window.__haravan_selected_phone);
+    }, 250);
+  }
+
   /* ── XHR interceptor ────────────────────────────────────── */
   // The Helpdesk Vue SPA creates tickets via frappe.call which uses
   // XMLHttpRequest under the hood. We intercept send() to inject the
@@ -77,8 +127,9 @@
 
     XMLHttpRequest.prototype.send = function (body) {
       var customer = window.__haravan_selected_customer;
+      var phone = selectedPhone();
       if (
-        customer &&
+        (customer || phone) &&
         this._hrvMethod === "POST" &&
         typeof this._hrvUrl === "string" &&
         typeof body === "string"
@@ -102,8 +153,13 @@
                   var encoded = part.substring(4);
                   var decoded = decodeURIComponent(encoded);
                   var docObj = JSON.parse(decoded);
-                  if (docObj.doctype === "HD Ticket" && !docObj.customer) {
-                    docObj.customer = customer;
+                  if (docObj.doctype === "HD Ticket") {
+                    if (customer && !docObj.customer) {
+                      docObj.customer = customer;
+                    }
+                    if (phone && !docObj.custom_phone) {
+                      docObj.custom_phone = phone;
+                    }
                   }
                   newParts.push("doc=" + encodeURIComponent(JSON.stringify(docObj)));
                   docReplaced = true;
@@ -119,8 +175,13 @@
             // Try JSON body
             else {
               var jsonBody = JSON.parse(body);
-              if (jsonBody.doc && jsonBody.doc.doctype === "HD Ticket" && !jsonBody.doc.customer) {
-                jsonBody.doc.customer = customer;
+              if (jsonBody.doc && jsonBody.doc.doctype === "HD Ticket") {
+                if (customer && !jsonBody.doc.customer) {
+                  jsonBody.doc.customer = customer;
+                }
+                if (phone && !jsonBody.doc.custom_phone) {
+                  jsonBody.doc.custom_phone = phone;
+                }
                 body = JSON.stringify(jsonBody);
               }
             }
@@ -201,7 +262,7 @@
       wrapper.appendChild(label);
 
       if (orgs.length === 1) {
-        window.__haravan_selected_customer = orgs[0].customer;
+        setSelectedOrg(orgs[0]);
         showSelectedCustomer(wrapper, orgs[0]);
         formContainer.insertBefore(wrapper, formContainer.firstChild);
         return;
@@ -237,13 +298,14 @@
 
       // On selection change
       select.addEventListener("change", function () {
-        window.__haravan_selected_customer = this.value;
-        showSelectedCustomer(wrapper, this.options[this.selectedIndex]._haravanOrg);
+        var org = this.options[this.selectedIndex]._haravanOrg;
+        setSelectedOrg(org);
+        showSelectedCustomer(wrapper, org);
       });
 
       wrapper.appendChild(select);
       select.selectedIndex = 1;
-      window.__haravan_selected_customer = orgs[0].customer;
+      setSelectedOrg(orgs[0]);
       showSelectedCustomer(wrapper, orgs[0]);
 
       // Insert at the top of the form
@@ -260,6 +322,7 @@
 
     // Reset selection on navigation
     window.__haravan_selected_customer = null;
+    window.__haravan_selected_phone = null;
 
     if (typeof frappe !== "undefined" && frappe.ready) {
       frappe.ready(function () {

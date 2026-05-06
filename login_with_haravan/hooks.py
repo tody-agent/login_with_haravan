@@ -9,6 +9,10 @@ app_license = "mit"
 after_install = "login_with_haravan.setup.install.after_install"
 after_migrate = "login_with_haravan.setup.install.after_migrate"
 
+override_whitelisted_methods = {
+    "frappe.www.login.send_login_link": "login_with_haravan.login_email.send_login_link",
+}
+
 web_include_js = [
     "/assets/login_with_haravan/js/haravan_login_redirect.js",
     "/assets/login_with_haravan/js/haravan_org_selector.js",
@@ -23,7 +27,10 @@ doc_events = {
     "HD Ticket": {
         "before_insert": "login_with_haravan.engines.sync_helpdesk.auto_set_customer",
         "before_validate": "login_with_haravan.engines.ticket_cc.validate_ticket_cc_emails",
-        "after_insert": "login_with_haravan.engines.ticket_cc.send_ticket_cc_created_notification",
+        "after_insert": [
+            "login_with_haravan.engines.sync_helpdesk.persist_ticket_contact_phone",
+            "login_with_haravan.engines.ticket_cc.send_ticket_cc_created_notification",
+        ],
     }
 }
 
