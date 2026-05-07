@@ -76,6 +76,18 @@
   decorative wrapper injection.
 - Scope: file:login_with_haravan/public/js/haravan_org_selector.js
 
+- What Failed: Ticket `61333` had a phone value, but Contact `Minh Hải` still
+  had empty `mobile_no`/`phone`, so future portal tickets had no phone suggestion.
+- Why It Failed: Production ticket intake stores the visible phone in
+  `HD Ticket.custom_contact_phone`, while the app hook only read `custom_phone`.
+  The portal JS also had an HTTP fallback, but `init()` waited for `frappe.call`
+  before invoking it, so the fallback path could remain unreachable in the SPA.
+- How to Prevent: Treat production Helpdesk field names as compatibility aliases.
+  Phone persistence and portal payload injection must support both
+  `custom_contact_phone` and `custom_phone`, and public portal JS should call the
+  same-origin `/api/method/...` fetch path even when global `frappe.call` is absent.
+- Scope: module:helpdesk-ticket-phone-sync
+
 - What Failed: `refresh_customer_profile` could load arbitrary `HD Customer` and
   `Contact` documents from direct whitelisted arguments before checking document
   permissions.

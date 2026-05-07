@@ -386,7 +386,7 @@ def get_contact_phone_options(contact: str | None) -> list[str]:
 
 def persist_ticket_contact_phone(doc, method=None):
     """Store a newly-entered ticket phone on the ticket Contact for future suggestions."""
-    phone = _doc_value(doc, "custom_phone")
+    phone = _first_doc_value(doc, ("custom_contact_phone", "custom_phone", "contact_phone"))
     key = normalize_phone_key(phone)
     if not key:
         return

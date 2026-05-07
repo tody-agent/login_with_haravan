@@ -89,6 +89,9 @@
 
   function findPhoneInput() {
     var selectors = [
+      "input[name='custom_contact_phone']",
+      "input[data-fieldname='custom_contact_phone']",
+      "[data-fieldname='custom_contact_phone'] input",
       "input[name='custom_phone']",
       "input[data-fieldname='custom_phone']",
       "[data-fieldname='custom_phone'] input",
@@ -192,6 +195,9 @@
                     if (phone && !docObj.custom_phone) {
                       docObj.custom_phone = phone;
                     }
+                    if (phone && !docObj.custom_contact_phone) {
+                      docObj.custom_contact_phone = phone;
+                    }
                   }
                   newParts.push("doc=" + encodeURIComponent(JSON.stringify(docObj)));
                   docReplaced = true;
@@ -213,6 +219,9 @@
                 }
                 if (phone && !jsonBody.doc.custom_phone) {
                   jsonBody.doc.custom_phone = phone;
+                }
+                if (phone && !jsonBody.doc.custom_contact_phone) {
+                  jsonBody.doc.custom_contact_phone = phone;
                 }
                 body = JSON.stringify(jsonBody);
               }
@@ -363,19 +372,7 @@
         fetchOrgs(injectSelector);
       });
     } else {
-      // Poll for frappe availability
-      var checkCount = 0;
-      var checkInterval = setInterval(function () {
-        checkCount++;
-        if (checkCount > 30) {
-          clearInterval(checkInterval);
-          return;
-        }
-        if (typeof frappe !== "undefined" && frappe.call) {
-          clearInterval(checkInterval);
-          fetchOrgs(injectSelector);
-        }
-      }, 500);
+      fetchOrgs(injectSelector);
     }
   }
 

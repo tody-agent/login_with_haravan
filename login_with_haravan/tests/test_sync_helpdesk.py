@@ -47,6 +47,7 @@ from login_with_haravan.engines.sync_helpdesk import (
     upsert_contact,
     validate_portal_ticket_customer_or_store_url,
 )
+from login_with_haravan.patches import backfill_contact_phone_from_tickets
 
 
 class TestMakeHdCustomerName(unittest.TestCase):
@@ -644,6 +645,24 @@ class TestPersistTicketContactPhone(unittest.TestCase):
         contact.append.assert_not_called()
         contact.save.assert_called_once_with(ignore_permissions=True)
 
+    def test_reads_production_contact_phone_field(self):
+        contact = MagicMock()
+        contact.mobile_no = ""
+        contact.phone = ""
+        frappe_mock.get_doc.return_value = contact
+        doc = SimpleNamespace(
+            custom_contact_phone="0938411165",
+            custom_phone="",
+            contact="contact-1",
+            raised_by="",
+        )
+
+        persist_ticket_contact_phone(doc)
+
+        self.assertEqual(contact.mobile_no, "0938411165")
+        self.assertEqual(contact.phone, "0938411165")
+        contact.save.assert_called_once_with(ignore_permissions=True)
+
     def test_does_not_duplicate_existing_phone_with_different_format(self):
         contact = MagicMock()
         contact.mobile_no = "+84 938 411 165"
@@ -669,6 +688,41 @@ class TestPersistTicketContactPhone(unittest.TestCase):
         self.assertEqual(contact.mobile_no, "0938411165")
         self.assertEqual(contact.phone, "028123456")
         contact.save.assert_called_once_with(ignore_permissions=True)
+
+
+class TestBackfillContactPhonePatch(unittest.TestCase):
+    def setUp(self):
+        _reset_frappe_mock()
+
+    def test_backfills_from_production_ticket_phone_field(self):
+        frappe_mock.db.exists.return_value = True
+        meta = MagicMock()
+        meta.has_field.side_effect = lambda field: field in {
+            "custom_contact_phone",
+            "custom_phone",
+        }
+        frappe_mock.get_meta.return_value = meta
+        ticket = {
+            "name": "61333",
+            "contact": "Minh Hải",
+            "raised_by": "leminhhai@gmail.com",
+            "custom_contact_phone": "0938411165",
+            "custom_phone": "",
+        }
+        frappe_mock.get_all.return_value = [ticket]
+
+        with patch.object(
+            backfill_contact_phone_from_tickets,
+            "persist_ticket_contact_phone",
+        ) as persist:
+            backfill_contact_phone_from_tickets.execute()
+
+        frappe_mock.get_all.assert_called_once_with(
+            "HD Ticket",
+            fields=["name", "contact", "raised_by", "custom_contact_phone", "custom_phone"],
+            or_filters=[["custom_contact_phone", "!=", ""], ["custom_phone", "!=", ""]],
+        )
+        persist.assert_called_once_with(ticket)
 
 
 class TestLegacyHaravanCommerceDataIgnored(unittest.TestCase):
