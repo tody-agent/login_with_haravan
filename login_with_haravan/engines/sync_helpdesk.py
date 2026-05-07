@@ -24,6 +24,7 @@ import frappe
 # Staff users only see tickets they created themselves.
 HD_CUSTOMER_LINK_ROLES = {"owner", "admin"}
 MIN_PHONE_DIGITS = 7
+METAJSON_ENRICHMENT_API = "haravan_bitrix_metajson_company_enrichment"
 
 def enrich_helpdesk_data(user: str, profile: dict):
     """Main entry point — called from oauth._persist_after_login().
@@ -271,6 +272,56 @@ def auto_set_customer(doc, method=None):
     validate_portal_ticket_customer_or_store_url(doc)
 
 
+def trigger_metajson_customer_enrichment(doc, method=None):
+    """After insert hook: link tickets enriched from meta.json to an HD Customer.
+
+    The production Bitrix workflow lives in a Desk-managed Server Script. This
+    hook only bridges tickets that already have an orgid from meta.json into
+    that API after the ticket name exists.
+    """
+    if _doc_value(doc, "customer"):
+        return
+
+    orgid = _first_doc_value(
+        doc,
+        (
+            "custom_orgid",
+            "custom_haravan_profile_orgid",
+            "custom_org_id",
+            "custom_haravan_orgid",
+            "custom_haravan_company_id",
+        ),
+    )
+    orgid = str(orgid or "").strip()
+    ticket_name = str(_doc_value(doc, "name") or "").strip()
+    if not orgid or not ticket_name:
+        return
+
+    try:
+        server_script = frappe.db.get_value(
+            "Server Script",
+            {"script_type": "API", "api_method": METAJSON_ENRICHMENT_API, "disabled": 0},
+            "name",
+            cache=False,
+        )
+        if not server_script:
+            return
+
+        from frappe.utils.safe_exec import call_whitelisted_function
+
+        call_whitelisted_function(
+            METAJSON_ENRICHMENT_API,
+            orgid=orgid,
+            ticket=ticket_name,
+            force=1,
+        )
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            "Haravan metajson customer enrichment failed",
+        )
+
+
 def validate_portal_ticket_customer_or_store_url(doc, method=None):
     """Require customer context for tickets created from the customer portal."""
     if not getattr(doc, "via_customer_portal", None):
@@ -387,6 +438,14 @@ def _doc_value(doc, key: str):
         if value is not None:
             return value
     return getattr(doc, key, None)
+
+
+def _first_doc_value(doc, keys: tuple[str, ...]):
+    for key in keys:
+        value = _doc_value(doc, key)
+        if value not in (None, ""):
+            return value
+    return None
 
 
 def _contact_phone_keys(contact) -> set[str]:

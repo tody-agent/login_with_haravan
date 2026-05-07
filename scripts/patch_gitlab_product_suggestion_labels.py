@@ -40,6 +40,7 @@ PRIORITY_LABELS = {
     "low": "P4_Low",
 }
 BASE_GITLAB_LABELS = "helpdesk,customer-report"
+EXCLUDED_DEFAULT_LABELS = ["helpdesk"]
 '''
 
 
@@ -52,6 +53,10 @@ def split_labels(value):
         if label and label not in labels:
             labels.append(label)
     return labels
+
+
+def default_label_allowed(label):
+    return as_text(label).lower() not in EXCLUDED_DEFAULT_LABELS
 
 
 def product_suggestion_labels(ticket_name):
@@ -94,7 +99,7 @@ def gitlab_default_labels(ticket_name):
     labels = []
     priority_label = ticket_priority_label(ticket_name)
     for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):
-        if label not in labels:
+        if default_label_allowed(label) and label not in labels:
             labels.append(label)
     return ",".join(labels)
 
@@ -155,9 +160,24 @@ def patch_server_script(script: str) -> str:
             '    "low": "P4_Low",\n'
             '}\n',
         )
+    if "EXCLUDED_DEFAULT_LABELS" not in patched:
+        patched = patched.replace(
+            'BASE_GITLAB_LABELS = "helpdesk,customer-report"\n',
+            'BASE_GITLAB_LABELS = "helpdesk,customer-report"\n'
+            'EXCLUDED_DEFAULT_LABELS = ["helpdesk"]\n',
+        )
 
     if "def split_labels(value):" not in patched:
         patched = patched.replace("\ndef get_tracker_by_ticket(ticket_name):\n", SERVER_LABEL_FUNCTIONS + "\n\ndef get_tracker_by_ticket(ticket_name):\n")
+    if "def default_label_allowed(label):" not in patched:
+        patched = patched.replace(
+            "\n\ndef product_suggestion_labels(ticket_name):\n",
+            '\n\n'
+            'def default_label_allowed(label):\n'
+            '    return as_text(label).lower() not in EXCLUDED_DEFAULT_LABELS\n'
+            '\n\n'
+            'def product_suggestion_labels(ticket_name):\n',
+        )
     elif "def gitlab_default_assignee_ids(ticket_name):" not in patched:
         patched = patched.replace(
             'def gitlab_default_labels(ticket_name):\n'
@@ -224,7 +244,7 @@ def patch_server_script(script: str) -> str:
             '    labels = []\n'
             '    priority_label = ticket_priority_label(ticket_name)\n'
             '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
-            '        if label not in labels:\n'
+            '        if default_label_allowed(label) and label not in labels:\n'
             '            labels.append(label)\n'
             '    return ",".join(labels)\n',
         )
@@ -236,7 +256,7 @@ def patch_server_script(script: str) -> str:
             '    labels = []\n'
             '    priority_label = ticket_priority_label(ticket_name)\n'
             '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
-            '        if label not in labels:\n'
+            '        if default_label_allowed(label) and label not in labels:\n'
             '            labels.append(label)\n'
             '    return ",".join(labels)\n',
         )
@@ -257,7 +277,7 @@ def patch_server_script(script: str) -> str:
             '    labels = []\n'
             '    priority_label = ticket_priority_label(ticket_name)\n'
             '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
-            '        if label not in labels:\n'
+            '        if default_label_allowed(label) and label not in labels:\n'
             '            labels.append(label)\n'
             '    return ",".join(labels)\n',
         )
@@ -279,10 +299,36 @@ def patch_server_script(script: str) -> str:
             '    labels = []\n'
             '    priority_label = ticket_priority_label(ticket_name)\n'
             '    for label in product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n'
-            '        if label not in labels:\n'
+            '        if default_label_allowed(label) and label not in labels:\n'
             '            labels.append(label)\n'
             '    return ",".join(labels)\n',
         )
+    patched = patched.replace(
+        "        if label not in labels:\n"
+        "            labels.append(label)\n"
+        "    return \",\".join(labels)\n\n\ndef gitlab_default_assignee_ids",
+        "        if default_label_allowed(label) and label not in labels:\n"
+        "            labels.append(label)\n"
+        "    return \",\".join(labels)\n\n\ndef gitlab_default_assignee_ids",
+    )
+    patched = patched.replace(
+        "    for label in configured_defaults + product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n"
+        "        if label not in labels:\n",
+        "    for label in configured_defaults + product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else []):\n"
+        "        if default_label_allowed(label) and label not in labels:\n",
+    )
+    patched = patched.replace(
+        "        if label not in labels:\n"
+        "            labels.append(label)\n"
+        "    return \",\".join(labels)\n\n\ndef product_suggestion_value",
+        "        if default_label_allowed(label) and label not in labels:\n"
+        "            labels.append(label)\n"
+        "    return \",\".join(labels)\n\n\ndef product_suggestion_value",
+    )
+    patched = patched.replace(
+        '    labels = as_text(frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name) or gitlab_default_labels_config())\n',
+        '    labels = as_text(frappe.form_dict.get("labels") or gitlab_default_labels(ticket_name))\n',
+    )
 
     if '"custom_product_suggestion"' not in patched:
         patched = patched.replace(
@@ -354,6 +400,8 @@ def patch_server_script(script: str) -> str:
         "PRODUCT_SUGGESTION_PROJECT_ID_FIELD",
         "TICKET_INTERNAL_TYPE_FIELDS",
         "PRIORITY_LABELS",
+        "EXCLUDED_DEFAULT_LABELS",
+        "def default_label_allowed(label):",
         '"urgent": "P1_Urgent"',
         '"high": "P2_High"',
         '"medium": "P3_Medium"',
@@ -366,6 +414,7 @@ def patch_server_script(script: str) -> str:
         'return ["Support"]',
         'return ["API_Support"]',
         "product_suggestion_labels(ticket_name) + internal_type_labels(ticket_name) + ([priority_label] if priority_label else [])",
+        "default_label_allowed(label) and label not in labels",
         "def gitlab_default_assignee_ids(ticket_name):",
         "def gitlab_default_project_id(ticket_name):",
         '"default_labels": gitlab_default_labels(ticket_name)',
@@ -396,23 +445,29 @@ def patch_form_script(script: str) -> str:
         patched = patched.replace(
             "        const defLabels = init.default_labels || '';\n",
             "        const defLabels = init.default_labels || '';\n"
-            "        const defAssigneeIds = init.default_assignee_ids || '';\n"
-            "        const defProjectId = init.default_project_id || '';\n",
+            "        const defAssigneeIds = init.default_assignee_ids || '';\n",
         )
+    patched = patched.replace("        const defProjectId = init.default_project_id || '';\n", "")
 
     patched = patched.replace(
         "                        labels: document.getElementById(`${id}-labels`)?.value || 'helpdesk,customer-report'\n",
         "                        labels: document.getElementById(`${id}-labels`)?.value || defLabels,\n"
-        "                        assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds,\n"
-        "                        project_id: document.getElementById(`${id}-project-id`)?.value || defProjectId\n",
+        "                        assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds\n",
     )
     if "assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds" not in patched:
         patched = patched.replace(
             "                        labels: document.getElementById(`${id}-labels`)?.value || defLabels\n",
             "                        labels: document.getElementById(`${id}-labels`)?.value || defLabels,\n"
-            "                        assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds,\n"
-            "                        project_id: document.getElementById(`${id}-project-id`)?.value || defProjectId\n",
+            "                        assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds\n",
         )
+    patched = patched.replace(
+        "                        assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds,\n",
+        "                        assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds\n",
+    )
+    patched = patched.replace(
+        "                        project_id: document.getElementById(`${id}-project-id`)?.value || defProjectId\n",
+        "",
+    )
     patched = patched.replace(
         '                                value="helpdesk,customer-report"\n',
         '                                value="${esc(defLabels)}"\n',
@@ -429,32 +484,35 @@ def patch_form_script(script: str) -> str:
             '                            <input id="${id}-assignee-ids" class="gl-input" type="text"\n'
             '                                value="${esc(defAssigneeIds)}"\n'
             '                                placeholder="GitLab user ID, phân cách bởi dấu phẩy">\n'
-            '                            <label class="gl-label" for="${id}-project-id">Project ID</label>\n'
-            '                            <input id="${id}-project-id" class="gl-input" type="text"\n'
-            '                                value="${esc(defProjectId)}"\n'
-            '                                placeholder="Để trống để dùng cấu hình mặc định">\n',
         )
+    patched = patched.replace(
+        '                            <label class="gl-label" for="${id}-project-id">Project ID</label>\n'
+        '                            <input id="${id}-project-id" class="gl-input" type="text"\n'
+        '                                value="${esc(defProjectId)}"\n'
+        '                                placeholder="Để trống để dùng cấu hình mặc định">\n',
+        "",
+    )
     patched = patched.replace(
         "        const defLabels = init.default_labels || 'helpdesk,customer-report';\n",
         "        const defLabels = init.default_labels || '';\n"
-        "        const defAssigneeIds = init.default_assignee_ids || '';\n"
-        "        const defProjectId = init.default_project_id || '';\n",
+        "        const defAssigneeIds = init.default_assignee_ids || '';\n",
     )
 
     required = [
         "const defLabels = init.default_labels || '';",
         "const defAssigneeIds = init.default_assignee_ids || '';",
-        "const defProjectId = init.default_project_id || '';",
         "labels: document.getElementById(`${id}-labels`)?.value || defLabels",
         "assignee_ids: document.getElementById(`${id}-assignee-ids`)?.value || defAssigneeIds",
-        "project_id: document.getElementById(`${id}-project-id`)?.value || defProjectId",
         'value="${esc(defLabels)}"',
         'value="${esc(defAssigneeIds)}"',
-        'value="${esc(defProjectId)}"',
     ]
     missing = [text for text in required if text not in patched]
     if missing:
         raise ValueError("Form script patch did not apply cleanly: " + ", ".join(missing))
+    forbidden = ["defProjectId", "project-id", "Project ID"]
+    present = [text for text in forbidden if text in patched]
+    if present:
+        raise ValueError("Form script still contains removed Project ID UI: " + ", ".join(present))
 
     return patched
 

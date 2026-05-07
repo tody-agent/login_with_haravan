@@ -50,6 +50,19 @@
   exact behavior into the active integration branch, then proving with local tests
   instead of blindly merging duplicate branches. — scope: module:customer-profile-oauth-security
 
+- What Failed: `haravan_org_selector.js` was loaded on production and Contact
+  `sociads-Trang trí phòng xinh - 1000008079` had `mobile_no=0938411165`, but
+  `/helpdesk/my-tickets/new` still showed an empty phone field.
+- Why It Failed: The portal autofill path depended on global `frappe.call` to
+  fetch `login_with_haravan.oauth.get_user_haravan_orgs`. The Helpdesk customer
+  portal SPA may not expose `frappe.call`, so the script silently returned no
+  orgs and never scheduled phone autofill.
+- How to Prevent: Public Helpdesk portal JS should use a direct
+  `/api/method/...` `fetch()` fallback with `credentials: "same-origin"` for
+  whitelisted app APIs, and schedule DOM autofill retries independently of
+  decorative wrapper injection.
+- Scope: file:login_with_haravan/public/js/haravan_org_selector.js
+
 - What Failed: `refresh_customer_profile` could load arbitrary `HD Customer` and
   `Contact` documents from direct whitelisted arguments before checking document
   permissions.
@@ -171,6 +184,19 @@
 - Why It Failed: Frappe generated `redirect_uri` from the active/request domain while the app's token exchange and docs did not share one configurable callback source; Haravan requires the authorize and token `redirect_uri` values to match the Partner Dashboard exactly.
 - How to Prevent: Keep Social Login Key callback relative for automatic request-domain behavior. Use exact `haravan_account_login.redirect_uri` in Site Config only when a fixed-domain override is needed without migrate/setup.
 - Scope: module:login_with_haravan.oauth
+
+- What Failed: Ticket `61307`/meta.json workflow could resolve a Haravan `orgid`
+  on `HD Ticket.custom_orgid`, but `HD Ticket.customer` could remain empty and no
+  new `HD Customer` was created or linked automatically.
+- Why It Failed: The production metajson Bitrix API existed, but the custom app
+  `HD Ticket.after_insert` hook did not bridge tickets that already had an orgid
+  into `haravan_bitrix_metajson_company_enrichment`. The API only ran when an
+  external metajson workflow or manual caller invoked it.
+- How to Prevent: After ticket insert, if `customer` is blank and an orgid field is
+  present, call the Desk-managed metajson enrichment API with `orgid`, `ticket`,
+  and `force=1`; log failures with `frappe.log_error()` and never block ticket
+  creation.
+- Scope: module:login_with_haravan.engines.sync_helpdesk
 
 - What Failed: `bench migrate` crashed with `ModuleNotFoundError: No module named 'login_with_haravan.frappe_x_haravan'` after renaming the display title in modules.txt.
 - Why It Failed: `modules.txt` was changed from `Login With Haravan` to `Login With Haravan` in commit af7665c. Frappe's `sync_for()` scrubs module names via `frappe.scrub()`: `"Login With Haravan"` → `"frappe_x_haravan"`. But the actual Python directory is `login_with_haravan/login_with_haravan/` → scrubbed as `"login_with_haravan"`. The import `login_with_haravan.frappe_x_haravan` doesn't exist.

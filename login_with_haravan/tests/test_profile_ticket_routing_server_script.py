@@ -49,6 +49,10 @@ class ProfileTicketRoutingServerScriptTest(unittest.TestCase):
             [spec["name"] for spec in deploy.SERVER_SCRIPT_SPECS],
             [deploy.SERVER_SCRIPT_NAME, deploy.ASSIGNMENT_SERVER_SCRIPT_NAME],
         )
+        self.assertEqual(
+            [spec["disabled"] for spec in deploy.SERVER_SCRIPT_SPECS],
+            [0, 1],
+        )
         source = Path(deploy.__file__).read_text(encoding="utf-8")
         self.assertIn('"status": "success"', source)
         self.assertIn('"deployed": deployed', source)

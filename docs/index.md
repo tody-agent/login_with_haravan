@@ -21,6 +21,7 @@ Luồng OAuth là **login-only**. Callback đăng nhập chỉ lưu dữ liệu 
 | Admin vận hành Haravan Helpdesk | [Bắt đầu & cấu hình OAuth](/guide/getting-started) → [Khắc phục sự cố](/guide/troubleshooting) → [Sổ đăng ký Script](/operations/script-registry) | Quản lý config, script production và xử lý lỗi thường gặp |
 | Team CS/Support Haravan | [User, email & multi-org](/guide/haravan-user-account-cases) → [Cấp quyền Portal/Desk](/guide/haravan-employee-helpdesk-access) → [HD Ticket Product Suggestion](/guide/hd-ticket-product-suggestion) | Hiểu user được tạo thế nào, cấp quyền đúng và cập nhật luật nghiệp vụ |
 | Agent dùng Customer Profile | [Data model haravan.help](/haravan-helpdesk-data-model) → [Customer Profile API](/api/customer-profile) → [Metajson, Bitrix & Customer Profit](/operations/metajson-bitrix-customer-profit-flow) | Hiểu dữ liệu ticket/customer, Bitrix enrichment và popup agent |
+| PM/UAT Haravan | [Bộ tài liệu UAT & bàn giao](/uat-handoff/) → [Checklist UAT](/uat-handoff/02-checklist-uat) → [Checklist bàn giao](/uat-handoff/03-checklist-ban-giao) | Chạy nghiệm thu theo user story mapping và ký nhận bàn giao vận hành |
 
 ## Luồng đọc khuyến nghị
 
@@ -30,6 +31,14 @@ Luồng OAuth là **login-only**. Callback đăng nhập chỉ lưu dữ liệu 
 2. [Bắt đầu & cấu hình OAuth](/guide/getting-started)
 3. [Triển khai production](/guide/deployment)
 4. [Khắc phục sự cố](/guide/troubleshooting)
+5. [Bộ tài liệu UAT & bàn giao](/uat-handoff/)
+
+### 1.1. UAT và nghiệm thu với Haravan
+
+1. [Bộ tài liệu UAT & bàn giao](/uat-handoff/)
+2. [Bản đồ user story](/uat-handoff/01-ban-do-user-story)
+3. [Checklist UAT](/uat-handoff/02-checklist-uat)
+4. [Checklist bàn giao vận hành](/uat-handoff/03-checklist-ban-giao)
 
 ### 2. Login và phân quyền
 

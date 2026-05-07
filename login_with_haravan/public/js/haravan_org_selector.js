@@ -36,23 +36,46 @@
   /* ── API call ───────────────────────────────────────────── */
 
   function fetchOrgs(callback) {
-    if (typeof frappe === "undefined" || !frappe.call) {
-      return callback([]);
+    if (typeof frappe !== "undefined" && frappe.call) {
+      frappe.call({
+        method: API_METHOD,
+        async: true,
+        callback: function (r) {
+          if (r && r.message && Array.isArray(r.message)) {
+            callback(r.message);
+          } else {
+            callback([]);
+          }
+        },
+        error: function () {
+          fetchOrgsViaHttp(callback);
+        },
+      });
+      return;
     }
-    frappe.call({
-      method: API_METHOD,
-      async: true,
-      callback: function (r) {
-        if (r && r.message && Array.isArray(r.message)) {
-          callback(r.message);
-        } else {
-          callback([]);
-        }
-      },
-      error: function () {
+    fetchOrgsViaHttp(callback);
+  }
+
+  function fetchOrgsViaHttp(callback) {
+    if (!window.fetch) {
+      callback([]);
+      return;
+    }
+    window
+      .fetch("/api/method/" + API_METHOD, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+      .then(function (response) {
+        return response.ok ? response.json() : {};
+      })
+      .then(function (data) {
+        callback(data && Array.isArray(data.message) ? data.message : []);
+      })
+      .catch(function () {
         callback([]);
-      },
-    });
+      });
   }
 
   function firstPhone(org) {
@@ -84,10 +107,22 @@
   function setPhoneIfEmpty(phone) {
     if (!phone) return;
     var input = findPhoneInput();
-    if (!input || input.value) return;
+    if (!input || input.value) return false;
     input.value = phone;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  function schedulePhoneAutofill(phone) {
+    if (!phone) return;
+    var attempts = 0;
+    function trySet() {
+      attempts++;
+      if (setPhoneIfEmpty(phone) || attempts >= 30) return;
+      setTimeout(trySet, 250);
+    }
+    trySet();
   }
 
   function selectedPhone() {
@@ -99,10 +134,7 @@
   function setSelectedOrg(org) {
     window.__haravan_selected_customer = org && org.customer;
     window.__haravan_selected_phone = firstPhone(org);
-    setPhoneIfEmpty(window.__haravan_selected_phone);
-    setTimeout(function () {
-      setPhoneIfEmpty(window.__haravan_selected_phone);
-    }, 250);
+    schedulePhoneAutofill(window.__haravan_selected_phone);
   }
 
   /* ── XHR interceptor ────────────────────────────────────── */
@@ -218,6 +250,8 @@
 
   function injectSelector(orgs) {
     if (orgs.length === 0) return;
+
+    setSelectedOrg(orgs[0]);
 
     // Don't inject twice
     if (document.getElementById(SELECTOR_ID)) return;

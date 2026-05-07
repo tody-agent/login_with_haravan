@@ -11,6 +11,11 @@ from pathlib import Path
 
 import requests
 
+try:
+    from patch_customer_profile_bitrix_fields import patch_form_script as patch_bitrix_fields_form_script
+except Exception:
+    patch_bitrix_fields_form_script = None
+
 
 FORM_SCRIPT_NAME = "Profile - Ticket Customer Button"
 ENV_PATHS = ("/Volumes/Data/Skills/frappe_helpdesk/.env",)
@@ -52,6 +57,13 @@ def request_json(session: requests.Session, method: str, url: str, **kwargs):
 
 def resource_url(site: str, doctype: str, name: str) -> str:
     return f"{site}/api/resource/{requests.utils.quote(doctype, safe='')}/{requests.utils.quote(name, safe='')}"
+
+
+def apply_bitrix_fields_patch(source: str, changed: bool) -> tuple[str, bool]:
+    if not patch_bitrix_fields_form_script:
+        return source, changed
+    patched, did = patch_bitrix_fields_form_script(source)
+    return patched, changed or did
 
 
 def patch_script(source: str) -> tuple[str, bool]:
@@ -222,7 +234,7 @@ def patch_script(source: str) -> tuple[str, bool]:
         )
         if ".customer-profile-dialog .modal-body{padding:18px 24px 22px}" not in repaired:
             repaired = repaired.replace("#cp-profile *{box-sizing:border-box}", "#cp-profile *{box-sizing:border-box}" + compact_additions)
-        return repaired, repaired != source
+        return apply_bitrix_fields_patch(repaired, repaired != source)
 
     render_marker = "  const render = (payload) => {"
     render_start = source.find(render_marker)
@@ -519,7 +531,7 @@ def patch_script(source: str) -> tuple[str, bool]:
   }'''
 
     patched = source[:render_start] + render_replacement + source[render_end:open_end] + open_replacement + source[open_end:]
-    return patched, True
+    return apply_bitrix_fields_patch(patched, True)
 
 
 def main() -> int:

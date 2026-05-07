@@ -178,6 +178,7 @@ SERVER_SCRIPT_SPECS = [
         "name": SERVER_SCRIPT_NAME,
         "event": DOCTYPE_EVENT,
         "script": SERVER_SCRIPT,
+        "disabled": 0,
         "backup_prefix": "routing",
         "compile_label": "profile-ticket-routing-server-script",
     },
@@ -185,6 +186,7 @@ SERVER_SCRIPT_SPECS = [
         "name": ASSIGNMENT_SERVER_SCRIPT_NAME,
         "event": ASSIGNMENT_DOCTYPE_EVENT,
         "script": ASSIGNMENT_SERVER_SCRIPT,
+        "disabled": 1,
         "backup_prefix": "assignment",
         "compile_label": "profile-ticket-assignment-server-script",
     },
@@ -239,7 +241,7 @@ def _deploy_server_script(session: requests.Session, site: str, spec: dict) -> d
         "script_type": "DocType Event",
         "reference_doctype": REFERENCE_DOCTYPE,
         "doctype_event": spec["event"],
-        "disabled": 0,
+        "disabled": spec["disabled"],
         "script": spec["script"],
     }
     return upsert_doc(session, site, "Server Script", spec["name"], payload)
@@ -290,6 +292,7 @@ def main() -> int:
                 "name": spec["name"],
                 "reference_doctype": REFERENCE_DOCTYPE,
                 "doctype_event": spec["event"],
+                "disabled": spec["disabled"],
                 "action": action,
             }
         )

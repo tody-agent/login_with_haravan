@@ -33,6 +33,7 @@ def _reset_frappe_mock():
 
 from login_with_haravan.engines.sync_helpdesk import (
     HD_CUSTOMER_LINK_ROLES,
+    METAJSON_ENRICHMENT_API,
     _make_hd_customer_name,
     _safe_int,
     auto_set_customer,
@@ -40,6 +41,7 @@ from login_with_haravan.engines.sync_helpdesk import (
     get_contact_phone_options,
     normalize_phone_key,
     persist_ticket_contact_phone,
+    trigger_metajson_customer_enrichment,
     update_user_profile,
     upsert_hd_customer,
     upsert_contact,
@@ -487,6 +489,55 @@ class TestAutoSetCustomer(unittest.TestCase):
 
         self.assertIsNone(doc.customer)
         frappe_mock.get_all.assert_not_called()
+
+    def test_after_insert_triggers_metajson_enrichment_for_orgid_without_customer(self):
+        """Should call metajson enrichment API when meta.json resolved orgid but no HD Customer."""
+        safe_exec_module = types.ModuleType("frappe.utils.safe_exec")
+        safe_exec_module.call_whitelisted_function = MagicMock(return_value={"success": True})
+        sys.modules["frappe.utils.safe_exec"] = safe_exec_module
+        self.addCleanup(sys.modules.pop, "frappe.utils.safe_exec", None)
+        frappe_mock.db.get_value.return_value = "Metajson - Bitrix Company Enrichment API"
+        doc = SimpleNamespace(name="61307", customer="", custom_orgid="1000391653")
+
+        trigger_metajson_customer_enrichment(doc)
+
+        frappe_mock.db.get_value.assert_called_once_with(
+            "Server Script",
+            {"script_type": "API", "api_method": METAJSON_ENRICHMENT_API, "disabled": 0},
+            "name",
+            cache=False,
+        )
+        safe_exec_module.call_whitelisted_function.assert_called_once_with(
+            METAJSON_ENRICHMENT_API,
+            orgid="1000391653",
+            ticket="61307",
+            force=1,
+        )
+
+    def test_after_insert_skips_metajson_enrichment_when_customer_already_linked(self):
+        """Should not call Bitrix metajson API for tickets already linked to HD Customer."""
+        doc = SimpleNamespace(name="61307", customer="Existing Customer", custom_orgid="1000391653")
+
+        trigger_metajson_customer_enrichment(doc)
+
+        frappe_mock.db.get_value.assert_not_called()
+
+    def test_after_insert_metajson_enrichment_never_blocks_ticket_creation(self):
+        """Should log and continue if the metajson API trigger fails."""
+        safe_exec_module = types.ModuleType("frappe.utils.safe_exec")
+        safe_exec_module.call_whitelisted_function = MagicMock(side_effect=Exception("boom"))
+        sys.modules["frappe.utils.safe_exec"] = safe_exec_module
+        self.addCleanup(sys.modules.pop, "frappe.utils.safe_exec", None)
+        frappe_mock.db.get_value.return_value = "Metajson - Bitrix Company Enrichment API"
+        frappe_mock.get_traceback.return_value = "traceback"
+        doc = SimpleNamespace(name="61307", customer="", custom_orgid="1000391653")
+
+        trigger_metajson_customer_enrichment(doc)
+
+        frappe_mock.log_error.assert_called_once_with(
+            "traceback",
+            "Haravan metajson customer enrichment failed",
+        )
 
     def test_portal_ticket_requires_customer_or_store_url(self):
         """Should block portal tickets without customer context."""

@@ -1,6 +1,6 @@
 app_name = "login_with_haravan"
 app_title = "Login With Haravan"
-app_version = "0.1.12"
+app_version = "0.1.13"
 app_publisher = "Tody"
 app_description = "Login With Haravan Single Sign On Module"
 app_email = "todyle@haravan.com"
@@ -28,6 +28,7 @@ doc_events = {
         "before_insert": "login_with_haravan.engines.sync_helpdesk.auto_set_customer",
         "before_validate": "login_with_haravan.engines.ticket_cc.validate_ticket_cc_emails",
         "after_insert": [
+            "login_with_haravan.engines.sync_helpdesk.trigger_metajson_customer_enrichment",
             "login_with_haravan.engines.sync_helpdesk.persist_ticket_contact_phone",
             "login_with_haravan.engines.ticket_cc.send_ticket_cc_created_notification",
         ],
