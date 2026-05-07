@@ -50,6 +50,25 @@ class BitrixConfigTest(unittest.TestCase):
 
 
 class BitrixClientTest(unittest.TestCase):
+    @patch("login_with_haravan.engines.bitrix_api.requests.post")
+    def test_company_lookup_uses_haravan_company_id_and_profile_select_fields(self, post_mock):
+        from login_with_haravan.engines.bitrix_api import BitrixClient
+
+        response = MagicMock()
+        response.json.return_value = {"result": []}
+        response.raise_for_status.return_value = None
+        post_mock.return_value = response
+
+        client = BitrixClient({"webhook_url": "https://haravan.bitrix24.vn/rest/1/secret/"})
+        client.find_companies(haravan_orgid="200000010462")
+
+        payload = post_mock.call_args_list[0].kwargs["json"]
+        self.assertEqual(payload["filter"], {"UF_CRM_COMPANY_ID": "200000010462"})
+        self.assertIn("UF_CRM_1778130421650", payload["select"])
+        self.assertIn("UF_CRM_SHOP_OWNER_EMAIL", payload["select"])
+        self.assertEqual(payload["order"], {"DATE_MODIFY": "DESC"})
+        self.assertEqual(payload["start"], 0)
+
     @patch("login_with_haravan.engines.bitrix_api.requests.get")
     def test_responsible_user_get_accepts_full_template_url(self, get_mock):
         from login_with_haravan.engines.bitrix_api import BitrixClient
@@ -344,6 +363,53 @@ class CustomerEnrichmentTest(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(result["data"]["bitrix"]["responsible"]["name"], "Nguyen An")
         frappe_mock.get_doc.assert_called_once_with("HD Customer", "12345 - Shop")
+
+    @patch("login_with_haravan.engines.customer_enrichment.get_bitrix_config")
+    @patch("login_with_haravan.engines.customer_enrichment.BitrixClient")
+    def test_bitrix_company_profile_maps_customer_segment_code(self, client_cls, config_mock):
+        from login_with_haravan.engines.customer_enrichment import refresh_customer_profile
+
+        config_mock.return_value = {
+            "enabled": True,
+            "configured": True,
+            "responsible_configured": False,
+        }
+        client = client_cls.return_value
+        client.find_companies.return_value = [
+            {
+                "ID": "108346",
+                "TITLE": "Shop - 200000010462",
+                "UF_CRM_COMPANY_ID": "200000010462",
+                "UF_CRM_CURRENT_SHOPPLAN": "OMNI PRO 2024 (2 năm)",
+                "UF_CRM_CURRENT_HSI_SEGMENT": "HSI_500+",
+                "UF_CRM_CURRENT_HSI_DETAIL": "580.0000000",
+                "UF_CRM_HARAVAN_MEMBERSHIP": "Member",
+                "UF_CRM_1778130421650": "15094",
+            }
+        ]
+        client.find_contacts.return_value = []
+        client.build_entity_url.return_value = "https://bitrix/company/108346/"
+
+        customer = MagicMock()
+        customer.name = "Shop - 200000010462"
+        customer.customer_name = "Shop - 200000010462"
+        customer.domain = ""
+        customer.custom_haravan_company_id = "200000010462"
+        customer.custom_haravan_orgid = 10462
+        frappe_mock.get_doc.return_value = customer
+
+        result = refresh_customer_profile("Shop - 200000010462")
+
+        company = result["data"]["bitrix"]["company"]
+        self.assertEqual(company["company_id"], "200000010462")
+        self.assertEqual(company["customer_segment"], "Enterprise")
+        self.assertEqual(company["customer_segment_code"], "15094")
+        self.assertEqual(company["current_shopplan"], "OMNI PRO 2024 (2 năm)")
+        client.find_companies.assert_called_once_with(
+            domain=None,
+            haravan_orgid="200000010462",
+        )
+        customer.set.assert_any_call("custom_customer_segment", "Enterprise")
 
     @patch("login_with_haravan.engines.customer_enrichment.get_bitrix_config")
     @patch("login_with_haravan.engines.customer_enrichment.BitrixClient")

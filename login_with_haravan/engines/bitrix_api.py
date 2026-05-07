@@ -8,6 +8,36 @@ from urllib.parse import quote, urljoin
 import requests
 
 
+COMPANY_PROFILE_SELECT_FIELDS = [
+    "ID",
+    "TITLE",
+    "DATE_CREATE",
+    "DATE_MODIFY",
+    "ASSIGNED_BY_ID",
+    "ADDRESS_REGION",
+    "ADDRESS_COUNTRY",
+    "UF_CRM_VERIFIED_STATUS",
+    "UF_CRM_COMPANY_STAGE",
+    "UF_CRM_ID_FRESHSALES",
+    "UF_CRM_COMPANY_ID",
+    "UF_CRM_SHOP_OWNER_NAME",
+    "UF_CRM_SHOP_OWNER_EMAIL",
+    "UF_CRM_SHOP_OWNER_PHONE_NUMBER",
+    "UF_CRM_DATE_CREATED_SHOP",
+    "UF_CRM_FIRST_PAID_DATE",
+    "UF_CRM_CURRENT_SHOPPLAN",
+    "UF_CRM_DATE_SIGNED_CURRENT_SHOPPLAN",
+    "UF_CRM_DATE_EXPIRED_SHOPPLAN",
+    "UF_CRM_CURRENT_HSI_SEGMENT",
+    "UF_CRM_CURRENT_HSI_DETAIL",
+    "UF_CRM_HARAVAN_MEMBERSHIP",
+    "UF_CRM_1778130421650",
+    "EMAIL",
+    "PHONE",
+    "WEB",
+]
+
+
 class BitrixClient:
     def __init__(self, config: dict[str, Any]):
         self.config = config
@@ -39,6 +69,7 @@ class BitrixClient:
     ) -> list[dict[str, Any]]:
         filters: list[dict[str, Any]] = []
         if haravan_orgid:
+            filters.append({"UF_CRM_COMPANY_ID": haravan_orgid})
             filters.append({"UF_CRM_HARAVAN_ORG_ID": haravan_orgid})
         if domain:
             filters.append({"WEB": domain})
@@ -49,8 +80,9 @@ class BitrixClient:
                 "crm.company.list",
                 {
                     "filter": filter_payload,
-                    "select": ["*", "UF_*", "EMAIL", "PHONE", "WEB"],
+                    "select": COMPANY_PROFILE_SELECT_FIELDS,
                     "order": {"DATE_MODIFY": "DESC"},
+                    "start": 0,
                 },
             ).get("result") or []
             if result:

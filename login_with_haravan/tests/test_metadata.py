@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 import login_with_haravan
+from login_with_haravan import hooks
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,6 +24,14 @@ class PackageMetadataTest(unittest.TestCase):
         self.assertEqual(login_with_haravan.__version__, pyproject["project"]["version"])
         self.assertEqual(login_with_haravan.__version__, setup_version.group(1))
         self.assertEqual(login_with_haravan.__version__, hooks_version.group(1))
+
+    def test_hd_ticket_after_insert_runs_metajson_customer_enrichment_first(self):
+        after_insert = hooks.doc_events["HD Ticket"]["after_insert"]
+
+        self.assertEqual(
+            after_insert[0],
+            "login_with_haravan.engines.sync_helpdesk.trigger_metajson_customer_enrichment",
+        )
 
 
 if __name__ == "__main__":

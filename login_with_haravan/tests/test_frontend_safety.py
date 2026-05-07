@@ -70,9 +70,18 @@ class TestFrontendSafety(unittest.TestCase):
         content = self.read_js("haravan_org_selector.js")
 
         self.assertIn("window.__haravan_selected_phone", content)
-        self.assertIn("setPhoneIfEmpty", content)
+        self.assertIn("schedulePhoneAutofill", content)
+        self.assertIn("setSelectedOrg(orgs[0])", content)
         self.assertIn("docObj.custom_phone = phone", content)
         self.assertIn("jsonBody.doc.custom_phone = phone", content)
+
+    def test_haravan_org_selector_fetches_without_frappe_call(self):
+        """The Helpdesk portal SPA may not expose frappe.call globally."""
+        content = self.read_js("haravan_org_selector.js")
+
+        self.assertIn("fetchOrgsViaHttp", content)
+        self.assertIn('"/api/method/" + API_METHOD', content)
+        self.assertIn('credentials: "same-origin"', content)
 
     def test_customer_profile_panel_uses_fast_profile_then_bitrix_tab(self):
         """Customer Profile must open before slow Bitrix enrichment finishes."""

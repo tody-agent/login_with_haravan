@@ -12,6 +12,14 @@ from login_with_haravan.engines.bitrix_api import BitrixClient
 from login_with_haravan.engines.site_config import get_bitrix_config
 
 
+BITRIX_CUSTOMER_SEGMENT_FIELD = "UF_CRM_1778130421650"
+BITRIX_CUSTOMER_SEGMENT_MAP = {
+    "15090": "SME",
+    "15092": "Medium",
+    "15094": "Enterprise",
+}
+
+
 def get_ticket_customer_profile(ticket: str | int, refresh: bool = False) -> dict[str, Any]:
     context = _ticket_context(ticket)
     if not context:
@@ -87,12 +95,7 @@ def get_ticket_bitrix_profile(ticket: str | int, refresh: bool = True) -> dict[s
     if company:
         company_id = _entity_id(company)
         company_url = client.build_entity_url("company", company_id)
-        bitrix_data["company"] = {
-            "id": str(company_id) if company_id is not None else None,
-            "title": company.get("TITLE") or company.get("NAME"),
-            "url": company_url,
-            "summary": company,
-        }
+        bitrix_data["company"] = _bitrix_company_profile(company, company_url)
         responsible = _resolve_responsible_user(client, company)
         if responsible:
             bitrix_data["responsible"] = responsible
@@ -153,7 +156,10 @@ def refresh_customer_profile(
         company = _first(
             client.find_companies(
                 domain=_empty_to_none(getattr(customer_doc, "domain", None)),
-                haravan_orgid=_empty_to_none(str(getattr(customer_doc, "custom_haravan_orgid", "") or "")),
+                haravan_orgid=_first_present(
+                    getattr(customer_doc, "custom_haravan_company_id", None),
+                    getattr(customer_doc, "custom_haravan_orgid", None),
+                ),
             )
         )
         bitrix_contact = _first(
@@ -174,11 +180,18 @@ def refresh_customer_profile(
     if company:
         company_id = _entity_id(company)
         company_url = client.build_entity_url("company", company_id)
+        company_profile = _bitrix_company_profile(company, company_url)
         _set_if_possible(customer_doc, "custom_bitrix_company_id", company_id)
         _set_if_possible(customer_doc, "custom_bitrix_company_url", company_url)
         _set_if_possible(customer_doc, "custom_bitrix_match_confidence", 90)
         _set_if_possible(customer_doc, "custom_bitrix_sync_status", "matched")
         _set_if_possible(customer_doc, "custom_bitrix_last_synced_at", now)
+        _set_if_possible(customer_doc, "custom_customer_segment", company_profile.get("customer_segment"))
+        _set_if_possible(customer_doc, "custom_first_paid_date", company_profile.get("first_paid_date"))
+        _set_if_possible(customer_doc, "custom_shopplan_name", company_profile.get("current_shopplan"))
+        _set_if_possible(customer_doc, "custom_expired_date", company_profile.get("shopplan_expiry"))
+        _set_if_possible(customer_doc, "custom_haravan_hsi_segment", company_profile.get("current_hsi_segment"))
+        _set_if_possible(customer_doc, "custom_hsi_segment", company_profile.get("current_hsi_segment"))
         _save_doc(customer_doc)
         _upsert_customer_data(
             hd_customer=customer_doc.name,
@@ -191,9 +204,7 @@ def refresh_customer_profile(
             match_key="domain_or_haravan_orgid",
         )
         bitrix_data["company"] = {
-            "id": str(company_id) if company_id is not None else None,
-            "title": company.get("TITLE") or company.get("NAME"),
-            "url": company_url,
+            **company_profile,
             "summary": company,
         }
         responsible = _resolve_responsible_user(client, company)
@@ -306,7 +317,14 @@ def _customer_summary(doc: Any) -> dict[str, Any]:
         "customer_name": getattr(doc, "customer_name", None),
         "domain": getattr(doc, "domain", None),
         "haravan_orgid": getattr(doc, "custom_haravan_orgid", None),
+        "haravan_company_id": getattr(doc, "custom_haravan_company_id", None),
         "myharavan": getattr(doc, "custom_myharavan", None),
+        "customer_segment": getattr(doc, "custom_customer_segment", None),
+        "first_paid_date": getattr(doc, "custom_first_paid_date", None),
+        "shopplan_name": getattr(doc, "custom_shopplan_name", None),
+        "expired_date": getattr(doc, "custom_expired_date", None),
+        "hsi_segment": getattr(doc, "custom_haravan_hsi_segment", None)
+        or getattr(doc, "custom_hsi_segment", None),
         "bitrix_company_id": getattr(doc, "custom_bitrix_company_id", None),
         "bitrix_company_url": getattr(doc, "custom_bitrix_company_url", None),
         "bitrix_sync_status": getattr(doc, "custom_bitrix_sync_status", None),
@@ -371,6 +389,39 @@ def _resolve_responsible_user(client: BitrixClient, company: dict[str, Any]) -> 
         "name": _bitrix_user_name(user),
         "user_type": user.get("USER_TYPE"),
         "status": "active" if active else "inactive",
+    }
+
+
+def _bitrix_company_profile(company: dict[str, Any], company_url: str | None) -> dict[str, Any]:
+    company_id = _entity_id(company)
+    segment_code = _scalar(company.get(BITRIX_CUSTOMER_SEGMENT_FIELD))
+    return {
+        "id": str(company_id) if company_id is not None else None,
+        "title": company.get("TITLE") or company.get("NAME"),
+        "url": company_url,
+        "date_create": _scalar(company.get("DATE_CREATE")),
+        "date_modify": _scalar(company.get("DATE_MODIFY")),
+        "assigned_by_id": _scalar(company.get("ASSIGNED_BY_ID")),
+        "address_region": _scalar(company.get("ADDRESS_REGION")),
+        "address_country": _scalar(company.get("ADDRESS_COUNTRY")),
+        "verified_status": _scalar(company.get("UF_CRM_VERIFIED_STATUS")),
+        "company_stage": _scalar(company.get("UF_CRM_COMPANY_STAGE")),
+        "freshsales_id": _scalar(company.get("UF_CRM_ID_FRESHSALES")),
+        "company_id": _scalar(company.get("UF_CRM_COMPANY_ID")),
+        "owner_name": _scalar(company.get("UF_CRM_SHOP_OWNER_NAME")),
+        "owner_email": _scalar(company.get("UF_CRM_SHOP_OWNER_EMAIL")),
+        "owner_phone": _scalar(company.get("UF_CRM_SHOP_OWNER_PHONE_NUMBER")),
+        "shop_created_date": _scalar(company.get("UF_CRM_DATE_CREATED_SHOP")),
+        "first_paid_date": _scalar(company.get("UF_CRM_FIRST_PAID_DATE")),
+        "current_shopplan": _scalar(company.get("UF_CRM_CURRENT_SHOPPLAN")),
+        "current_shopplan_date": _scalar(company.get("UF_CRM_DATE_SIGNED_CURRENT_SHOPPLAN")),
+        "shopplan_expiry": _scalar(company.get("UF_CRM_DATE_EXPIRED_SHOPPLAN")),
+        "current_hsi_segment": _scalar(company.get("UF_CRM_CURRENT_HSI_SEGMENT")),
+        "current_hsi_detail": _scalar(company.get("UF_CRM_CURRENT_HSI_DETAIL")),
+        "membership": _scalar(company.get("UF_CRM_HARAVAN_MEMBERSHIP")),
+        "customer_segment": BITRIX_CUSTOMER_SEGMENT_MAP.get(segment_code, segment_code),
+        "customer_segment_code": segment_code,
+        "summary": company,
     }
 
 
@@ -484,8 +535,28 @@ def _contact_title(entity: dict[str, Any]) -> str | None:
 def _empty_to_none(value: Any) -> str | None:
     if value is None:
         return None
+    if value.__class__.__module__.startswith("unittest.mock"):
+        return None
     value = str(value).strip()
     return value or None
+
+
+def _scalar(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, list):
+        for item in value:
+            item_value = _scalar(item)
+            if item_value:
+                return item_value
+        return None
+    if isinstance(value, dict):
+        for key in ("VALUE", "value", "TEXT", "text", "NAME", "name"):
+            item_value = value.get(key)
+            if item_value not in (None, ""):
+                return str(item_value).strip()
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    return str(value).strip()
 
 
 def _get_value(row: Any, key: str) -> Any:

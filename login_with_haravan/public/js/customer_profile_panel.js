@@ -182,7 +182,7 @@
       row("Company ID", customer.haravan_orgid) +
       row("MyHaravan", customer.myharavan) +
       row("Domain", customer.domain) +
-      row("Bitrix", customer.bitrix_company_url ? '<button class="hcp-btn" data-action="open-bitrix">Mo Bitrix</button>' : customer.bitrix_company_id, true);
+      row("Bitrix", customer.bitrix_company_url ? '<button class="hcp-btn" data-action="open-bitrix">Mở</button>' : customer.bitrix_company_id, true);
 
     var contactRows =
       row("Name", contact.name) +
@@ -201,13 +201,13 @@
       '</div><div class="hcp-meta">' +
       escapeHtml(["Company ID " + (customer.haravan_orgid || "-"), "Bitrix " + (customer.bitrix_company_id || "-")].join(" / ")) +
       '</div></div><div class="hcp-actions">' +
-      (customer.bitrix_company_url ? '<button class="hcp-btn" data-action="open-bitrix">Mo Bitrix</button>' : "") +
-      '<button class="hcp-btn primary" data-action="refresh-bitrix">Lam moi Bitrix</button>' +
+      (customer.bitrix_company_url ? '<button class="hcp-btn" data-action="open-bitrix">Mở</button>' : "") +
+      '<button class="hcp-btn primary" data-action="refresh-bitrix">Làm mới</button>' +
       "</div></div>" +
       '<div class="hcp-grid">' +
       stat("Status", statusPill(bitrix.status || customer.bitrix_sync_status || "local"), true) +
       stat("Segment", customer.customer_segment || "-") +
-      stat("Company ID", customer.haravan_orgid) +
+      stat("Company ID", customer.haravan_company_id || customer.haravan_orgid) +
       stat("Bitrix ID", customer.bitrix_company_id) +
       "</div>" +
       section("Khach hang", profileRows) +
@@ -227,6 +227,7 @@
     var ticket = data.ticket || {};
     var bitrix = data.bitrix || {};
     var company = bitrix.company || {};
+    var raw = company.raw_summary || company.summary || {};
     var bitrixContact = bitrix.contact || {};
     var responsible = bitrix.responsible || {};
 
@@ -234,11 +235,36 @@
 
     var companyRows =
       row("Status", statusPill(bitrix.status), true) +
-      row("Company ID", company.id || customer.bitrix_company_id) +
-      row("Company", company.title) +
+      row("Company ID", company.id || company.bitrix_id || raw.ID || customer.bitrix_company_id) +
+      row("Company", company.title_full || company.title || company.company_name || raw.TITLE) +
+      row("Created", company.date_create || raw.DATE_CREATE) +
+      row("Modified", company.date_modify || raw.DATE_MODIFY) +
       row("URL", company.url || customer.bitrix_company_url) +
-      row("Responsible", responsible.email || responsible.name) +
-      row("Responsible Status", responsible.status);
+      row("Responsible", responsible.email || responsible.name || company.assigned_by_email || company.assigned_by_name) +
+      row("Responsible Status", responsible.status) +
+      row("Region", company.address_region || raw.ADDRESS_REGION) +
+      row("Country", company.address_country || raw.ADDRESS_COUNTRY) +
+      row("Verified Status", company.verified_status || raw.UF_CRM_VERIFIED_STATUS) +
+      row("Company Stage", company.company_stage || raw.UF_CRM_COMPANY_STAGE) +
+      row("Freshsales ID", company.freshsales_id || raw.UF_CRM_ID_FRESHSALES) +
+      row("Haravan Company ID", company.company_id || raw.UF_CRM_COMPANY_ID);
+
+    var ownerRows =
+      row("Shop Owner", company.owner_name || raw.UF_CRM_SHOP_OWNER_NAME) +
+      row("Owner Email", company.owner_email || raw.UF_CRM_SHOP_OWNER_EMAIL) +
+      row("Owner Phone", company.owner_phone || raw.UF_CRM_SHOP_OWNER_PHONE_NUMBER);
+
+    var planRows =
+      row("Customer Segment", company.customer_segment || customer.customer_segment) +
+      row("Segment Code", company.customer_segment_code || raw.UF_CRM_1778130421650) +
+      row("Shop Created", company.shop_created_date || raw.UF_CRM_DATE_CREATED_SHOP) +
+      row("First Paid", company.first_paid_date || customer.first_paid_date || raw.UF_CRM_FIRST_PAID_DATE) +
+      row("Current Shopplan", company.current_shopplan || customer.shopplan_name || raw.UF_CRM_CURRENT_SHOPPLAN) +
+      row("Signed Current Plan", company.current_shopplan_date || raw.UF_CRM_DATE_SIGNED_CURRENT_SHOPPLAN) +
+      row("Expired Shopplan", company.shopplan_expiry || customer.expired_date || raw.UF_CRM_DATE_EXPIRED_SHOPPLAN) +
+      row("Current HSI Segment", company.current_hsi_segment || customer.hsi_segment || raw.UF_CRM_CURRENT_HSI_SEGMENT) +
+      row("Current HSI Detail", company.current_hsi_detail || raw.UF_CRM_CURRENT_HSI_DETAIL) +
+      row("Haravan Membership", company.membership || raw.UF_CRM_HARAVAN_MEMBERSHIP);
 
     var contactRows =
       row("Contact ID", bitrixContact.id || contact.bitrix_contact_id) +
@@ -247,20 +273,22 @@
 
     return (
       '<div class="hcp-toolbar"><div class="hcp-heading"><div class="hcp-name">' +
-      escapeHtml(company.title || customer.customer_name || customer.name || "Bitrix") +
+      escapeHtml(company.title_full || company.title || company.company_name || raw.TITLE || customer.customer_name || customer.name || "Bitrix") +
       '</div><div class="hcp-meta">' +
       escapeHtml(["Ticket " + (ticket.name || ticketNameFromPath()), "OrgID " + (ticket.orgid || customer.haravan_orgid || "-")].join(" / ")) +
       '</div></div><div class="hcp-actions">' +
-      (company.url || customer.bitrix_company_url ? '<button class="hcp-btn" data-action="open-bitrix">Mo Bitrix</button>' : "") +
-      '<button class="hcp-btn primary" data-action="refresh-bitrix">Lam moi</button>' +
+      (company.url || customer.bitrix_company_url ? '<button class="hcp-btn" data-action="open-bitrix">Mở</button>' : "") +
+      '<button class="hcp-btn primary" data-action="refresh-bitrix">Làm mới</button>' +
       "</div></div>" +
       '<div class="hcp-grid">' +
       stat("Status", statusPill(bitrix.status), true) +
-      stat("Company", company.title || customer.customer_name) +
-      stat("Bitrix ID", company.id || customer.bitrix_company_id) +
-      stat("Responsible", responsible.email || responsible.name) +
+      stat("Company", company.title_full || company.title || company.company_name || raw.TITLE || customer.customer_name) +
+      stat("Segment", company.customer_segment || customer.customer_segment) +
+      stat("Shopplan", company.current_shopplan || customer.shopplan_name) +
       "</div>" +
       section("Bitrix Company", companyRows) +
+      section("Shopplan & Segment", planRows) +
+      section("Shop Owner", ownerRows) +
       section("Bitrix Contact", contactRows)
     );
   }
