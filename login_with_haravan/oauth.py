@@ -151,6 +151,9 @@ def _persist_after_login(profile: dict, user: str | None = None):
     try:
         hd_customer_name = enrich_helpdesk_data(user, profile)
         upsert_haravan_account_link(user, profile, hd_customer=hd_customer_name)
+        # login_oauth_user() commits before returning because OAuth callbacks are GET.
+        # Persist app-owned identity links with a second explicit commit.
+        frappe.db.commit()
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Haravan post-login persistence failed")
 

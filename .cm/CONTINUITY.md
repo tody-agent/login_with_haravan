@@ -46,6 +46,19 @@
 
 ## Mistakes & Learnings
 
+- What Failed: Haravan OAuth login for `leminhhai@gmail.com` created/updated
+  `User.social_logins.provider=haravan_account`, but no `Haravan Account Link`,
+  `HD Customer`, or `Contact.links` persisted for org `1000409653`.
+- Why It Failed: Frappe `login_oauth_user()` commits the core User/Social Login
+  changes inside the GET callback before returning. The custom app wrote
+  Helpdesk identity records after that commit without a second explicit
+  `frappe.db.commit()`, so app-owned writes could be rolled back at request end
+  with no Error Log.
+- How to Prevent: In OAuth GET callbacks, explicitly commit any app-owned
+  post-login persistence written after `login_oauth_user()`, and cover it with a
+  regression test that asserts the second commit.
+- Scope: module:login_with_haravan.oauth
+
 - [Decision]: Merge security-only fixes from open Sentinel branches by porting the
   exact behavior into the active integration branch, then proving with local tests
   instead of blindly merging duplicate branches. — scope: module:customer-profile-oauth-security
