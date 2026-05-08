@@ -50,9 +50,14 @@ def _patch_frappe_user_permission_query():
         def _patched_get_permission_query_conditions(user_name):
             if user_name == "Administrator":
                 return ""
-            # Returning empty string prevents the hardcoded `tabUser`.name
-            # from breaking cross-table joins in frappe.client.get_list.
-            return ""
+
+            roles = frappe.get_roles(user_name)
+            if "System Manager" in roles:
+                # Returning empty string prevents the hardcoded `tabUser`.name
+                # from breaking cross-table joins in frappe.client.get_list.
+                return ""
+
+            return f"tabUser.name = '{user_name}'"
 
         _patched_get_permission_query_conditions._patched = True
         user.get_permission_query_conditions = _patched_get_permission_query_conditions
