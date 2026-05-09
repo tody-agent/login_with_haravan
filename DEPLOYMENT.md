@@ -38,6 +38,14 @@ bench --site boxme.localhost execute login_with_haravan.setup.install.configure_
 bench --site boxme.localhost clear-cache
 ```
 
+Optional (only if your Helpdesk flow needs phone normalization/contact sync):
+
+```bash
+bench --site boxme.localhost execute login_with_haravan.setup.install.ensure_helpdesk_phone_scripts
+```
+
+`ensure_helpdesk_phone_scripts` is intentionally manual/optional and is not auto-run by install/migrate hooks.
+
 Then open:
 
 ```text
@@ -52,6 +60,7 @@ http://boxme.localhost:8000/login
 4. Install `login_with_haravan` on the `haravandesk.s.frappe.cloud` site.
 5. Set site config values for Haravan Client ID and Client Secret.
 6. Run the setup method once, then clear cache.
+7. If needed, run the optional HD Ticket setup method.
 
 Expected callback path:
 

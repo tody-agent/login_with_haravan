@@ -50,6 +50,14 @@ bench --site boxme.localhost execute login_with_haravan.setup.install.configure_
 bench --site boxme.localhost clear-cache
 ```
 
+Optional if you also want Helpdesk phone normalization/contact sync scripts:
+
+```bash
+bench --site boxme.localhost execute login_with_haravan.setup.install.ensure_helpdesk_phone_scripts
+```
+
+`ensure_helpdesk_phone_scripts` is no longer auto-run during app install/migrate.
+
 Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Run Tests
