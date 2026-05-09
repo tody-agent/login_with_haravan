@@ -46,6 +46,17 @@ bench --site boxme.localhost execute login_with_haravan.setup.install.ensure_hel
 
 `ensure_helpdesk_phone_scripts` is intentionally manual/optional and is not auto-run by install/migrate hooks.
 
+## Rollout Checklist (Ops/Prod)
+
+1. Confirm OAuth login still works on `/login` after deploy.
+2. Check logs for deprecation warning emitted from `after_install`/`after_migrate`:
+   - `HD Ticket auto provisioning is deprecated and no longer runs ...`
+3. If your Helpdesk flow requires phone normalization/contact sync, run:
+   - `bench --site <site> execute login_with_haravan.setup.install.ensure_helpdesk_phone_scripts`
+4. Validate one `HD Ticket` create flow with a phone number and linked contact.
+5. Record site-level decision:
+   - `manual HD Ticket scripts applied` or `not required for this site`.
+
 Then open:
 
 ```text
