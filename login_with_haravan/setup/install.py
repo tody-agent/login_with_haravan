@@ -16,11 +16,13 @@ HDTICKET_TEMPLATE_DOCNAME = "Default"
 
 def after_install():
     configure_haravan_social_login()
+    _warn_helpdesk_auto_provision_deprecated("after_install")
     ensure_default_hd_ticket_template()
 
 
 def after_migrate():
     configure_haravan_social_login()
+    _warn_helpdesk_auto_provision_deprecated("after_migrate")
     ensure_default_hd_ticket_template()
 
 
@@ -119,6 +121,17 @@ def _get_configured_credentials() -> dict:
         "client_id": credentials.get("client_id") or frappe.conf.get("haravan_client_id"),
         "client_secret": credentials.get("client_secret") or frappe.conf.get("haravan_client_secret"),
     }
+
+
+def _warn_helpdesk_auto_provision_deprecated(trigger: str):
+    message = (
+        "HD Ticket auto provisioning is deprecated and no longer runs in "
+        f"{trigger}. Run `bench --site <site> execute "
+        "login_with_haravan.setup.install.ensure_helpdesk_phone_scripts` manually if needed."
+    )
+    logger_factory = getattr(frappe, "logger", None)
+    if callable(logger_factory):
+        logger_factory("login_with_haravan").warning(message)
 
 
 def ensure_default_hd_ticket_template() -> dict:

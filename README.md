@@ -58,6 +58,10 @@ bench --site boxme.localhost execute login_with_haravan.setup.install.ensure_hel
 
 `ensure_helpdesk_phone_scripts` is no longer auto-run during app install/migrate.
 
+Ops rollout note:
+- Monitor logs after install/migrate for the deprecation warning about HD Ticket auto provisioning.
+- Run `ensure_helpdesk_phone_scripts` manually only on sites that need the Helpdesk phone workflow.
+
 Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Run Tests
