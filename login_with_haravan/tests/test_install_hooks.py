@@ -2,7 +2,7 @@ import importlib
 import sys
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 def _build_frappe_stub():
@@ -102,6 +102,77 @@ class InstallHooksTest(unittest.TestCase):
 
         self.assertEqual(result["status"], "created")
         self.assertEqual(result["name"], self.install.HDTICKET_TEMPLATE_DOCNAME)
+
+    def test_ensure_helpdesk_phone_scripts_skips_when_hd_ticket_doctype_missing(self):
+        with patch.object(self.install.frappe.db, "exists", return_value=False, create=True), patch.object(
+            self.install, "_upsert_client_script"
+        ) as client_mock, patch.object(self.install, "_upsert_server_script") as server_mock:
+            self.install.ensure_helpdesk_phone_scripts()
+
+        client_mock.assert_not_called()
+        server_mock.assert_not_called()
+
+    def test_ensure_helpdesk_phone_scripts_runs_only_available_script_doctypes(self):
+        exists_values = {
+            ("DocType", "HD Ticket"): True,
+            ("DocType", "Client Script"): True,
+            ("DocType", "Server Script"): False,
+        }
+        with patch.object(
+            self.install.frappe.db,
+            "exists",
+            side_effect=lambda doctype, name: exists_values.get((doctype, name), False),
+            create=True,
+        ), patch.object(self.install, "_upsert_client_script") as client_mock, patch.object(
+            self.install, "_upsert_server_script"
+        ) as server_mock:
+            self.install.ensure_helpdesk_phone_scripts()
+
+        client_mock.assert_called_once_with()
+        server_mock.assert_not_called()
+
+    def test_upsert_client_script_updates_existing_named_doc(self):
+        existing_doc = Mock()
+        existing_doc.is_new.return_value = False
+        existing_doc.flags = types.SimpleNamespace()
+
+        with patch.object(self.install, "_build_client_script_code", return_value="client-script"), patch.object(
+            self.install, "_get_or_new_named_doc", return_value=existing_doc
+        ), patch.object(self.install, "_has_meta_field", return_value=True), patch.object(
+            self.install, "_save_named_doc"
+        ) as save_mock:
+            self.install._upsert_client_script()
+
+        existing_doc.update.assert_called_once_with(
+            {
+                "dt": "HD Ticket",
+                "enabled": 1,
+                "script": "client-script",
+                "view": "Form",
+            }
+        )
+        save_mock.assert_called_once_with(existing_doc)
+
+    def test_upsert_server_script_updates_existing_named_doc(self):
+        existing_doc = Mock()
+        existing_doc.is_new.return_value = False
+        existing_doc.flags = types.SimpleNamespace()
+
+        with patch.object(self.install, "_build_server_script_code", return_value="server-script"), patch.object(
+            self.install, "_get_or_new_named_doc", return_value=existing_doc
+        ), patch.object(self.install, "_save_named_doc") as save_mock:
+            self.install._upsert_server_script()
+
+        existing_doc.update.assert_called_once_with(
+            {
+                "script_type": "DocType Event",
+                "reference_doctype": "HD Ticket",
+                "doctype_event": "Before Insert",
+                "enabled": 1,
+                "script": "server-script",
+            }
+        )
+        save_mock.assert_called_once_with(existing_doc)
 
 
 if __name__ == "__main__":
