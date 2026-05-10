@@ -2,7 +2,20 @@ import importlib
 import sys
 import types
 import unittest
+from contextlib import ExitStack
 from unittest.mock import Mock, patch
+
+
+_INSTALL_HOOK_CONFIGURE_FUNCTIONS = (
+    "configure_haravan_social_login",
+    "configure_customer_profile_metadata",
+    "configure_helpdesk_integrations_settings_metadata",
+    "configure_helpdesk_product_suggestion_permissions",
+    "configure_ticket_customer_template_metadata",
+    "configure_helpdesk_product_suggestion_customer_optional",
+    "configure_ticket_cc_metadata",
+    "configure_onboarding_service_ticket_metadata",
+)
 
 
 def _build_frappe_stub():
@@ -31,13 +44,19 @@ class InstallHooksTest(unittest.TestCase):
         sys.modules.pop("login_with_haravan.setup.install", None)
 
     def test_after_install_configures_social_login_template_guard_and_deprecation_warning(self):
-        with patch.object(self.install, "configure_haravan_social_login") as configure_mock, patch.object(
-            self.install, "ensure_default_hd_ticket_template"
-        ) as ensure_template_mock, patch.object(
-            self.install, "ensure_helpdesk_phone_scripts"
-        ) as helpdesk_mock, patch.object(
-            self.install, "_warn_helpdesk_auto_provision_deprecated"
-        ) as warning_mock:
+        with ExitStack() as stack:
+            configure_mock = stack.enter_context(
+                patch.object(self.install, "configure_haravan_social_login")
+            )
+            for name in _INSTALL_HOOK_CONFIGURE_FUNCTIONS[1:]:
+                stack.enter_context(patch.object(self.install, name))
+            ensure_template_mock = stack.enter_context(
+                patch.object(self.install, "ensure_default_hd_ticket_template")
+            )
+            helpdesk_mock = stack.enter_context(patch.object(self.install, "ensure_helpdesk_phone_scripts"))
+            warning_mock = stack.enter_context(
+                patch.object(self.install, "_warn_helpdesk_auto_provision_deprecated")
+            )
             self.install.after_install()
 
         configure_mock.assert_called_once_with()
@@ -46,13 +65,19 @@ class InstallHooksTest(unittest.TestCase):
         warning_mock.assert_called_once_with("after_install")
 
     def test_after_migrate_configures_social_login_template_guard_and_deprecation_warning(self):
-        with patch.object(self.install, "configure_haravan_social_login") as configure_mock, patch.object(
-            self.install, "ensure_default_hd_ticket_template"
-        ) as ensure_template_mock, patch.object(
-            self.install, "ensure_helpdesk_phone_scripts"
-        ) as helpdesk_mock, patch.object(
-            self.install, "_warn_helpdesk_auto_provision_deprecated"
-        ) as warning_mock:
+        with ExitStack() as stack:
+            configure_mock = stack.enter_context(
+                patch.object(self.install, "configure_haravan_social_login")
+            )
+            for name in _INSTALL_HOOK_CONFIGURE_FUNCTIONS[1:]:
+                stack.enter_context(patch.object(self.install, name))
+            ensure_template_mock = stack.enter_context(
+                patch.object(self.install, "ensure_default_hd_ticket_template")
+            )
+            helpdesk_mock = stack.enter_context(patch.object(self.install, "ensure_helpdesk_phone_scripts"))
+            warning_mock = stack.enter_context(
+                patch.object(self.install, "_warn_helpdesk_auto_provision_deprecated")
+            )
             self.install.after_migrate()
 
         configure_mock.assert_called_once_with()
