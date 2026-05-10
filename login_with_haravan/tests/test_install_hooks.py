@@ -33,6 +33,7 @@ def _build_frappe_stub():
 class InstallHooksTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls._frappe_module_previous = sys.modules.get("frappe")
         cls._frappe_module = _build_frappe_stub()
         sys.modules["frappe"] = cls._frappe_module
         setattr(cls._frappe_module, "_", lambda text: text)
@@ -40,8 +41,11 @@ class InstallHooksTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        sys.modules.pop("frappe", None)
         sys.modules.pop("login_with_haravan.setup.install", None)
+        if cls._frappe_module_previous is not None:
+            sys.modules["frappe"] = cls._frappe_module_previous
+        else:
+            sys.modules.pop("frappe", None)
 
     def test_after_install_configures_social_login_template_guard_and_deprecation_warning(self):
         with ExitStack() as stack:
