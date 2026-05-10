@@ -1,86 +1,85 @@
 ---
-title: Trang chủ
-description: Bản đồ bàn giao Haravan Helpdesk cho Frappe Helpdesk dành cho Haravan Developers và đội vận hành.
-keywords: haravan, frappe, helpdesk, oauth, đăng nhập, tài liệu
-robots: index, follow
+layout: home
+
+hero:
+  name: "Haravan Helpdesk"
+  text: "Tài liệu bàn giao & vận hành"
+  tagline: Hệ thống hỗ trợ khách hàng đa kênh trên nền tảng Frappe Helpdesk
+  actions:
+    - theme: brand
+      text: Bắt đầu cài đặt
+      link: /getting-started/installation
+    - theme: alt
+      text: Hướng dẫn người dùng
+      link: /customer-guide/
+
+features:
+  - title: 🧑‍💻 Developer
+    details: Cài đặt, kiến trúc hệ thống, data model và safe_exec.
+    link: /architecture/overview
+  - title: 👨‍💼 Admin / IT
+    details: Cấu hình OAuth, phân quyền RBAC và quản trị Site Config.
+    link: /getting-started/site-config
+  - title: 🎧 Agent / CS
+    details: Kịch bản vận hành, xử lý ticket, script catalog và routing.
+    link: /operations/script-catalog
+  - title: 🏪 Khách hàng
+    details: Hướng dẫn sử dụng portal hỗ trợ, tạo và theo dõi ticket.
+    link: /customer-guide/
+  - title: 📋 PM / QA
+    details: Quy trình bàn giao, UAT checklist và Script review.
+    link: /handover/handoff-sop
+  - title: 🔌 Tích hợp
+    details: Luồng đồng bộ Bitrix, GitLab và các tính năng AI.
+    link: /integrations/bitrix-routing
 ---
 
-# Haravan Helpdesk — Bản đồ bàn giao
+<style>
+.info-box {
+  background: var(--vp-c-bg-soft);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 48px auto;
+  max-width: 800px;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 12px 24px;
+  font-size: 0.95em;
+  margin-bottom: 0;
+}
+.info-grid dt { font-weight: 600; color: var(--vp-c-text-1); display: flex; align-items: center; gap: 8px;}
+.info-grid dd { margin: 0; color: var(--vp-c-text-2); }
+</style>
 
-Ứng dụng **Haravan Helpdesk** là custom app Frappe đang chạy cho Haravan Helpdesk tại `https://haravan.help`. App phụ trách đăng nhập OAuth bằng Haravan Account, tạo/match `User`, liên kết Haravan org với `HD Customer`, và hỗ trợ agent đọc hồ sơ khách hàng từ Bitrix khi xử lý ticket.
+<div class="info-box">
+  <dl class="info-grid">
+    <dt>🌐 Production</dt>
+    <dd><a href="https://haravan.help" target="_blank">haravan.help</a></dd>
+    <dt>☁️ Frappe Cloud</dt>
+    <dd><code>haravandesk.s.frappe.cloud</code></dd>
+    <dt>📦 Custom App</dt>
+    <dd><code>login_with_haravan</code></dd>
+    <dt>🔗 GitHub</dt>
+    <dd><a href="https://github.com/tody-agent/login_with_haravan" target="_blank">tody-agent/login_with_haravan</a></dd>
+  </dl>
+</div>
 
-:::tip Trạng thái hiện tại
-Luồng OAuth là **login-only**. Callback đăng nhập chỉ lưu dữ liệu định danh tối thiểu (`userid`, `email`, `orgid`). Dữ liệu vận hành chi tiết như HSI, Shopplan, responsible, segment và Customer Profit/Profile được lấy server-side từ Bitrix theo nhu cầu agent, không gọi Haravan commerce API trong callback.
+<div style="max-width: 800px; margin: 0 auto;">
+
+## ⚠️ Quy tắc bảo mật
+
+::: danger TUYỆT ĐỐI KHÔNG
+- Lưu secret (API key, client secret, webhook URL) trong code, docs, hoặc Git
+- Expose config nhạy cảm qua client-side script
+- Dùng `ignore_permissions=True` mà không có permission gate
 :::
 
-## Đọc theo vai trò
+::: tip AN TOÀN
+- Mọi secret lưu trong **[Frappe Cloud Site Config](/getting-started/site-config)**
+- Kiểm tra trạng thái qua **Diagnostics API** (tự mask secret)
+- Backup script trước khi sửa, test trên staging trước
+:::
 
-| Vai trò | Nên đọc trước | Mục tiêu |
-|---|---|---|
-| Developer tiếp quản app | [Hiện trạng & lộ trình](/about/handoff-roadmap) → [Kiến trúc hệ thống](/architecture/overview) → [Triển khai production](/guide/deployment) | Nắm ranh giới code, cách deploy và hướng mở rộng an toàn |
-| Admin vận hành Haravan Helpdesk | [Bắt đầu & cấu hình OAuth](/guide/getting-started) → [Khắc phục sự cố](/guide/troubleshooting) → [Sổ đăng ký Script](/operations/script-registry) | Quản lý config, script production và xử lý lỗi thường gặp |
-| Team CS/Support Haravan | [User, email & multi-org](/guide/haravan-user-account-cases) → [Cấp quyền Portal/Desk](/guide/haravan-employee-helpdesk-access) → [HD Ticket Product Suggestion](/guide/hd-ticket-product-suggestion) | Hiểu user được tạo thế nào, cấp quyền đúng và cập nhật luật nghiệp vụ |
-| Agent dùng Customer Profile | [Data model haravan.help](/haravan-helpdesk-data-model) → [Customer Profile API](/api/customer-profile) → [Metajson, Bitrix & Customer Profit](/operations/metajson-bitrix-customer-profit-flow) | Hiểu dữ liệu ticket/customer, Bitrix enrichment và popup agent |
-| PM/UAT Haravan | [Bộ tài liệu UAT & bàn giao](/uat-handoff/) → [Checklist UAT](/uat-handoff/02-checklist-uat) → [Checklist bàn giao](/uat-handoff/03-checklist-ban-giao) | Chạy nghiệm thu theo user story mapping và ký nhận bàn giao vận hành |
-
-## Luồng đọc khuyến nghị
-
-### 1. Bàn giao nhanh
-
-1. [Hiện trạng & lộ trình](/about/handoff-roadmap)
-2. [Bắt đầu & cấu hình OAuth](/guide/getting-started)
-3. [Triển khai production](/guide/deployment)
-4. [Khắc phục sự cố](/guide/troubleshooting)
-5. [Bộ tài liệu UAT & bàn giao](/uat-handoff/)
-
-### 1.1. UAT và nghiệm thu với Haravan
-
-1. [Bộ tài liệu UAT & bàn giao](/uat-handoff/)
-2. [Bản đồ user story](/uat-handoff/01-ban-do-user-story)
-3. [Checklist UAT](/uat-handoff/02-checklist-uat)
-4. [Checklist bàn giao vận hành](/uat-handoff/03-checklist-ban-giao)
-
-### 2. Login và phân quyền
-
-1. [User, email & multi-org](/guide/haravan-user-account-cases)
-2. [Cấp quyền Portal/Desk](/guide/haravan-employee-helpdesk-access)
-3. [Luồng OAuth & đăng nhập](/architecture/oauth-flow)
-4. [OAuth Callback API](/api/oauth-callback)
-5. [Danh tính & tổ chức API](/api/identity-sync)
-
-### 3. Dữ liệu Helpdesk, Bitrix và agent workflow
-
-1. [Data model haravan.help](/haravan-helpdesk-data-model)
-2. [Customer Profile API](/api/customer-profile)
-3. [Metajson, Bitrix & Customer Profit](/operations/metajson-bitrix-customer-profit-flow)
-4. [HD Ticket Product Suggestion](/guide/hd-ticket-product-suggestion)
-5. [Sổ đăng ký Script](/operations/script-registry)
-6. [Ghi đè giao diện tiếng Việt](/operations/vietnamese-ui-override)
-
-### 4. Kiến trúc và tham chiếu
-
-1. [Tổng quan kiến trúc](/architecture/overview)
-2. [Luồng dữ liệu & đồng bộ](/architecture/data-flow)
-3. [Cơ sở dữ liệu](/architecture/database)
-4. [Bitrix integration reference](/bitrix_integration)
-5. [Bitrix field mapping](/bitrix_mapping)
-6. [Bitrix MCP setup](/bitrix_mcp_setup)
-
-## Giá trị cấu hình quan trọng
-
-| Hạng mục | Giá trị hiện tại |
-|---|---|
-| Public domain | `https://haravan.help` |
-| Frappe Cloud site | `haravandesk.s.frappe.cloud` |
-| OAuth callback path | `/api/method/login_with_haravan.oauth.login_via_haravan` |
-| Public callback URL | `https://haravan.help/api/method/login_with_haravan.oauth.login_via_haravan` |
-| Site Config key chính | `haravan_account_login` |
-| Provider DocType name | `haravan_account` |
-| Provider display name | `Login With Haravan` |
-
-## Quy tắc bảo trì
-
-- Không sửa Frappe core hoặc Helpdesk core; mọi tùy biến nằm trong app `login_with_haravan`, Custom Fields, Server Script hoặc HD Form Script.
-- Giữ `Social Login Key.redirect_url` dạng path tương đối để Frappe tự dùng domain request hiện tại. Chỉ đặt `haravan_account_login.redirect_uri` khi thật sự cần ép domain.
-- Không đưa Bitrix webhook, Haravan client secret, GitLab token hoặc API key ra browser hay tài liệu public.
-- Trước khi ship code, chạy test local theo [Triển khai production](/guide/deployment) hoặc `./test_gate.sh` nếu có.
+</div>
