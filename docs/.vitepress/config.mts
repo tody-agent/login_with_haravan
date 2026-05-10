@@ -108,9 +108,20 @@ export default withMermaid(defineConfig({
         ]
       },
       {
+        text: '📖 API Tham chiếu',
+        collapsed: true,
+        items: [
+          { text: 'Đồng bộ Khách hàng', link: '/api/customer-sync' },
+          { text: 'Customer Profile API', link: '/api/customer-profile' },
+          { text: 'Identity Sync API', link: '/api/identity-sync' },
+          { text: 'OAuth Callback API', link: '/api/oauth-callback' }
+        ]
+      },
+      {
         text: '📦 Bàn giao & Tham chiếu',
         collapsed: false,
         items: [
+          { text: '✅ UAT & Bàn giao Interactive', link: '/handover/uat-interactive' },
           { text: 'SOP Bàn giao vận hành', link: '/handover/handoff-sop' },
           { text: 'Scripts Review Checklist', link: '/handover/scripts-review' },
           { text: 'Bản đồ User Story', link: '/handover/uat-user-story' },
