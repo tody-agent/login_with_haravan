@@ -191,6 +191,35 @@ def upsert_contact(normalized: dict, hd_customer_name: str | None):
         _update_contact(contact_name, normalized, hd_customer_name)
 
 
+def _safe_apply_customer_admin_flag(contact, normalized: dict) -> bool:
+    """Set Contact.is_customer_admin for Haravan owner role (best-effort)."""
+    try:
+        roles = normalized.get("role", [])
+        if isinstance(roles, (list, tuple, set)):
+            role_values = set(roles)
+        elif roles:
+            role_values = {roles}
+        else:
+            role_values = set()
+
+        if "owner" not in role_values:
+            return False
+
+        field_exists = hasattr(contact, "is_customer_admin")
+        if not field_exists:
+            field_exists = frappe.db.has_column("Contact", "is_customer_admin")
+        if not field_exists:
+            return False
+
+        if int(getattr(contact, "is_customer_admin", 0) or 0) == 1:
+            return False
+
+        contact.is_customer_admin = 1
+        return True
+    except Exception:
+        return False
+
+
 def _create_contact(normalized: dict, hd_customer_name: str | None):
     """Create a new Contact with email and optional HD Customer link."""
     email = normalized["email"]
@@ -205,6 +234,8 @@ def _create_contact(normalized: dict, hd_customer_name: str | None):
                 "link_doctype": "HD Customer",
                 "link_name": hd_customer_name,
             })
+
+        _safe_apply_customer_admin_flag(contact, normalized)
 
         contact.flags.ignore_permissions = True
         contact.insert(ignore_permissions=True)
@@ -237,6 +268,9 @@ def _update_contact(contact_name: str, normalized: dict, hd_customer_name: str |
         # Fill middle_name if missing
         if not contact.middle_name and normalized.get("middle_name"):
             contact.middle_name = normalized["middle_name"]
+            changed = True
+
+        if _safe_apply_customer_admin_flag(contact, normalized):
             changed = True
 
         if changed:
