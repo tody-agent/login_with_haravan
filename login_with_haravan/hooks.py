@@ -50,9 +50,17 @@ def _patch_frappe_user_permission_query():
         def _patched_get_permission_query_conditions(user_name):
             if user_name == "Administrator":
                 return ""
-            # Returning empty string prevents the hardcoded `tabUser`.name
-            # from breaking cross-table joins in frappe.client.get_list.
-            return ""
+
+            roles = frappe.get_roles(user_name)
+            if "System Manager" in roles:
+                return ""
+
+            # Restrict non-privileged users to only their own record
+            # Use frappe.db.escape to prevent SQL injection or syntax errors with emails containing quotes
+            # Note: The original patch returned "" to prevent cross-table join errors with `tabUser`.name.
+            # To fix the join error while keeping security, we should ideally drop the table alias.
+            escaped_user = frappe.db.escape(user_name)
+            return f"name = {escaped_user}"
 
         _patched_get_permission_query_conditions._patched = True
         user.get_permission_query_conditions = _patched_get_permission_query_conditions
