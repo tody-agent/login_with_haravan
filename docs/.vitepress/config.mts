@@ -111,6 +111,7 @@ export default withMermaid(defineConfig({
         text: '📖 API Tham chiếu',
         collapsed: true,
         items: [
+          { text: 'Import dữ liệu qua API', link: '/api/frappe-api-migration' },
           { text: 'Đồng bộ Khách hàng', link: '/api/customer-sync' },
           { text: 'Customer Profile API', link: '/api/customer-profile' },
           { text: 'Identity Sync API', link: '/api/identity-sync' },
