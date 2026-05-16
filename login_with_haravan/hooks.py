@@ -48,11 +48,13 @@ def _patch_frappe_user_permission_query():
             return
 
         def _patched_get_permission_query_conditions(user_name):
-            if user_name == "Administrator":
+            if user_name == "Administrator" or "System Manager" in frappe.get_roles(user_name):
                 return ""
-            # Returning empty string prevents the hardcoded `tabUser`.name
-            # from breaking cross-table joins in frappe.client.get_list.
-            return ""
+            # Prevent the 1054 "Unknown column" SQL error in cross-table joins by
+            # explicitly removing the hardcoded `tabUser.` prefix from the condition,
+            # while safely returning a permission restriction based on username.
+            safe_user = frappe.db.escape(user_name)
+            return f"name = {safe_user}"
 
         _patched_get_permission_query_conditions._patched = True
         user.get_permission_query_conditions = _patched_get_permission_query_conditions
